@@ -5,6 +5,8 @@
 - `2_planilha.py <AAAA-MM>` — gera o xlsx no modelo, recalcula no LibreOffice e
   falha se sobrar célula com erro.
 - `3_painel.py` — junta `painel/base.html` + `painel/app.js` com todo `dados/*.json`.
+- `conferir_xlsx.py <xlsx> <pdf> <AAAA-MM>` — confronta o export xlsx do Rodopar com o
+  PDF (resumos, linhas e divergências sem arredondamento).
 - `comum.py` — tabela de grupos e as contas das colunas derivadas (R–Y) e da linha
   de total, compartilhadas pelos três.
 

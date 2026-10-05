@@ -28,14 +28,18 @@ o mesmo caminho de arquivo mantém a URL.
 2. **Ler dois resumos por bloco**: `RESUMO DO BÔNUS` (quantidades à esquerda,
    valores à direita) e `RESUMO PRÊMIO POR MÉDIA` (média, grupo, posição,
    economia, prêmio, km).
-3. **Conferir contra os lançamentos** — somar as linhas de cada bloco e comparar
+3. **Se houver o export xlsx do Rodopar** (`Comissão Toliman.rpt`), rodar
+   `python3 scripts/conferir_xlsx.py entrada/<export>.xlsx entrada/<arquivo>.pdf AAAA-MM`
+   antes de fechar os achados: ele tem os valores sem arredondamento e separa
+   divergência real da fonte de efeito do PDF (não traz o bloco de prêmio).
+4. **Conferir contra os lançamentos** — somar as linhas de cada bloco e comparar
    com o resumo. Divergência aqui é achado, não erro de leitura: reportar e
    **manter o valor do resumo**, que é o oficial do fechamento.
-4. **Montar a planilha** no modelo abaixo e recalcular as fórmulas com LibreOffice
+5. **Montar a planilha** no modelo abaixo e recalcular as fórmulas com LibreOffice
    até não sobrar nenhum erro.
-5. **Atualizar o painel**: `python3 scripts/3_painel.py` lê todo `dados/*.json`;
+6. **Atualizar o painel**: `python3 scripts/3_painel.py` lê todo `dados/*.json`;
    revisar o rodapé de `painel/base.html` (fontes e notas do mês).
-6. **Registrar** um `docs/historico/AAAA-MM-extracao.md` com os achados do mês.
+7. **Registrar** um `docs/historico/AAAA-MM-extracao.md` com os achados do mês.
 
 ## Regras de validação (têm que fechar em 100% dos motoristas)
 

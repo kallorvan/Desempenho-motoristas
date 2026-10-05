@@ -47,9 +47,14 @@ bônus operacional acompanha as viagens; o bônus por média subiu 28,2%.
    linhas foram lidas — a diferença está na fonte):
    0752 ANANIAS DOS REIS ROSA CANDIDO (+R$ 11.804,52), 0521 FLAVIO CUSTODIO ALVES
    (+R$ 9.121,10) e 0527 ORLEAN FADINI GONÇALVES (+R$ 2.500,00).
-   A diferença de 0521 é exatamente 2 × R$ 4.560,55 — o par EXPOCACER de 15/09
-   (RV 160521) que aparece nas linhas de 0752. Possível viagem lançada no resumo
-   de um motorista e nas linhas de outro.
+   Confirmadas no export xlsx (ver abaixo): a diferença está no próprio relatório
+   do Rodopar, não é efeito do PDF. Pista para 0752: a diferença é exatamente o
+   valor do documento `M: 1-001-077350` de 0765 ADILSON PEREIRA ASSIS (6.015,71 +
+   5.788,81, MACHADO x SANTOS, 13/09), que já está nas linhas e no resumo do 0765 —
+   possível frete contado também no resumo do 0752. A de 0521 (2 × R$ 4.560,55)
+   bate com cinco pares EXPOCACER diferentes de 15–16/09 (inclusive um do próprio
+   0521), então não dá para atribuir. A de 0527 (R$ 2.500,00) não corresponde a
+   nenhum lançamento do mês.
 3. **Vira**: 0763 ALEXSANDRO DONIZETE PEREIRA tem R$ 155,00 de vira nas linhas e
    R$ 100,00 no resumo (−R$ 55,00 pagos a menos que o lançado).
 4. **KM RODADO = 1** com frete faturado: 0923 FERNANDO DOS SANTOS MARQUES
@@ -62,10 +67,30 @@ bônus operacional acompanha as viagens; o bônus por média subiu 28,2%.
    0573, 0686, 0258 e 0728; R$ 125,00 para 0648 JOSE APRIGIO.
 6. **Arredondamento de R$ 0,01**: 19 motoristas com `TOTAL` impresso diferente da
    soma das parcelas, 2 deles também no `TOTAL PREMIAÇÃO` (0763 e 0019). Planilha
-   e painel usam a soma. Nas rubricas de viagem, 64 motoristas têm diferença de até
-   R$ 0,04 entre o resumo e a soma das linhas (arredondamento por linha).
+   e painel usam a soma. O xlsx não explica esses casos (o bônus sem arredondamento
+   + premiação dá o mesmo valor da planilha); a diferença está no cálculo do prêmio,
+   que o xlsx não traz. Nas rubricas de viagem, 64 motoristas têm diferença de até
+   R$ 0,04 entre o resumo e a soma das linhas do PDF — **resolvido pelo xlsx**: com
+   os valores sem arredondamento, as linhas somam exatamente o resumo.
 7. Nenhum bloco de prêmio duplicado neste mês; as três identidades fecham em 100%
    dos motoristas.
+
+## Confronto com o export xlsx do Rodopar
+
+Arquivo: `comissao_toliman_setembro_2026.xlsx` (relatório `Comissão Toliman.rpt`),
+conferido com `scripts/conferir_xlsx.py`. Traz os mesmos lançamentos e o
+`RESUMO DO BÔNUS`, com valores sem arredondamento, mas **não traz o
+`RESUMO PRÊMIO POR MÉDIA`** (média, km, economia, prêmio, bônus por média).
+
+- Universo idêntico: 92 motoristas, 1.556 lançamentos.
+- Resumos do bônus idênticos ao PDF nos 92 (frete, viagens, viras, carregamento,
+  lonas, quantidades, subtotal) e linhas idênticas uma a uma.
+- Com os valores sem arredondamento, as linhas somam exatamente o resumo em todos
+  os motoristas, **exceto** os 4 achados reais: frete de 0752, 0521 e 0527 e a vira
+  de 0763 — que, portanto, vêm do sistema, não do PDF.
+- Não se aplica aos achados de premiação: 0720 (premiação em branco), KM = 1 e o
+  arredondamento do `TOTAL` dependem do bloco de prêmio, que só existe no PDF.
+- Nenhum número da planilha ou do painel mudou com o confronto.
 
 ## Movimentação do quadro
 
