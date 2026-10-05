@@ -6,10 +6,8 @@ viag vira km media pos pctBF fpv bpv fkm bkm part rF rB`.
 
 Esta pasta é a fonte do painel. Commite todo mês.
 
-**Julho e agosto de 2026 precisam ser recuperados.** Estão embutidos no
-`Dashboard_Produtividade_Motoristas.html` que você baixou, na variável
-`const DATASETS = {"2026-07": [...], "2026-08": [...]}`. Coloque o HTML na raiz
-e peça ao Claude Code para extrair os dois para cá.
-
-Confira depois: julho tem 86 motoristas e R$ 7.465.076,54 de frete; agosto tem 88
-e R$ 7.729.187,77.
+**Julho e agosto de 2026 já estão aqui**, extraídos da `const DATASETS` do painel
+publicado (artefato citado em `docs/procedimento.md`). Conferido: julho tem 86
+motoristas e R$ 7.465.076,54 de frete; agosto tem 88 e R$ 7.729.187,77. As
+identidades `premTot = premio + bMedia` e `bonif = bonusOp + premTot` fecham em
+todos os registros dos dois meses.
