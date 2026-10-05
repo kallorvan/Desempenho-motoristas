@@ -219,6 +219,7 @@ function renderTable(){
     || `<tr><td colspan="10" style="text-align:center;color:var(--muted);padding:26px">Nenhum motorista encontrado. Ajuste a busca ou o filtro de grupo.</td></tr>`;
   document.querySelectorAll('#thead th').forEach(th=>
     th.querySelector('.ar').textContent = th.dataset.k===sortK ? (sortDir<0?'↓':'↑') : '');
+  if(typeof syncThead==='function') syncThead();
   const sf = rows.reduce((s,d)=>s+d.frete,0), sb = rows.reduce((s,d)=>s+d.bonif,0);
   const sp = rows.reduce((s,d)=>s+d.part,0);
   document.getElementById('tfoot').textContent =
@@ -498,6 +499,7 @@ function setTab(id){
     document.getElementById(v).classList.toggle('hidden', t!==id);
   });
   document.getElementById('mes-wrap').classList.toggle('dim', id==='tab-evo');
+  if(typeof posThead==='function') posThead();
   window.scrollTo({top:0,behavior:'instant'});
 }
 Object.keys(TABS).forEach(t=>document.getElementById(t).addEventListener('click',()=>setTab(t)));
@@ -519,6 +521,49 @@ document.getElementById('tbody').addEventListener('click',e=>{
 document.getElementById('rank').addEventListener('click',e=>{
   const b=e.target.closest('button[data-cod]'); if(b) openDriver(b.dataset.cod);
 });
+
+/* cabeçalho congelado: sombra só depois de rolar */
+const topHdr = document.querySelector('header.top');
+const marcaTopo = ()=>{
+  const y = window.scrollY;
+  topHdr.classList.toggle('stuck', y > 4);
+  /* histerese para não piscar quando a altura do cabeçalho muda no celular */
+  if(y > 200) topHdr.classList.add('compact'); else if(y < 40) topHdr.classList.remove('compact');
+};
+window.addEventListener('scroll', marcaTopo, {passive:true}); marcaTopo();
+
+/* títulos da tabela congelados: uma cópia do thead fica fixa abaixo do cabeçalho
+   enquanto a tabela está na tela, acompanhando a rolagem horizontal */
+const tScroll = document.querySelector('.tbl-scroll'), tReal = tScroll.querySelector('table');
+const tFloat = document.createElement('div'); tFloat.className = 'thead-float';
+tFloat.innerHTML = '<table><thead><tr></tr></thead></table>';
+document.body.appendChild(tFloat);
+function syncThead(){
+  const realRow = document.getElementById('thead');
+  const fRow = tFloat.querySelector('tr'), fTab = tFloat.querySelector('table');
+  fRow.innerHTML = realRow.innerHTML;
+  const ws = [...realRow.children].map(th=>th.getBoundingClientRect().width);
+  [...fRow.children].forEach((th,i)=>{ th.style.width = th.style.minWidth = th.style.maxWidth = ws[i]+'px'; });
+  fTab.style.width = tReal.getBoundingClientRect().width+'px';
+  posThead();
+}
+function posThead(){
+  const hb = topHdr.getBoundingClientRect().bottom, r = tScroll.getBoundingClientRect();
+  const th = document.getElementById('thead').getBoundingClientRect();
+  const on = !document.getElementById('v-geral').classList.contains('hidden') && th.top < hb && r.bottom > hb + th.height*2;
+  tFloat.classList.toggle('on', on);
+  if(!on) return;
+  tFloat.style.top = hb+'px'; tFloat.style.left = (r.left+tScroll.clientLeft)+'px'; tFloat.style.width = tScroll.clientWidth+'px';
+  tFloat.querySelector('table').style.marginLeft = (-tScroll.scrollLeft)+'px';
+}
+tFloat.addEventListener('click',e=>{
+  const th = e.target.closest('th'); if(!th) return;
+  document.querySelector(`#thead th[data-k="${th.dataset.k}"]`).click();
+});
+window.addEventListener('scroll', posThead, {passive:true});
+window.addEventListener('resize', syncThead);
+tScroll.addEventListener('scroll', posThead, {passive:true});
+if(document.fonts) document.fonts.ready.then(()=>syncThead());
 
 /* ================= RENDER GERAL ================= */
 function renderMes(keepCod){
