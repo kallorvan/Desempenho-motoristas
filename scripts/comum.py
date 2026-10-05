@@ -57,3 +57,9 @@ def totais(rows):
     t['bonifPorKm'] = round(t['totalBonif'] / t['km'], 6)
     t['partFrete'] = 1.0
     return t
+
+
+def vira_nao_computada(linhas):
+    """Regra do Rodopar: vira lançada na mesma linha de um pagamento de viagem não é
+    computada no TOTAL DE VIRAS (ex.: 0763, set/2026, R$ 55,00)."""
+    return [x for x in linhas if x['vira'] and x['viagem']]

@@ -55,8 +55,12 @@ bônus operacional acompanha as viagens; o bônus por média subiu 28,2%.
    bate com cinco pares EXPOCACER diferentes de 15–16/09 (inclusive um do próprio
    0521), então não dá para atribuir. A de 0527 (R$ 2.500,00) não corresponde a
    nenhum lançamento do mês.
-3. **Vira**: 0763 ALEXSANDRO DONIZETE PEREIRA tem R$ 155,00 de vira nas linhas e
-   R$ 100,00 no resumo (−R$ 55,00 pagos a menos que o lançado).
+3. ~~Vira de 0763~~ — **explicado, não é divergência.** 0763 ALEXSANDRO DONIZETE
+   PEREIRA tem R$ 155,00 de vira nas linhas e R$ 100,00 no resumo. Regra informada
+   pelo usuário: vira lançada junto com pagamento de viagem não é computada. A vira
+   de R$ 55,00 do doc. `M: 3-001-021679` (26/09, GUARUJA x MACHADO) está na mesma
+   linha de uma viagem de R$ 25,85. Aplicada a regra, a vira fecha nos 92
+   motoristas, e essa é a única linha do mês com vira e viagem juntas.
 4. **KM RODADO = 1** com frete faturado: 0923 FERNANDO DOS SANTOS MARQUES
    (R$ 4.520,79), 0606 MARCELO APARECIDO DE SOUZA (R$ 9.922,38) e 0922 RAFAEL DA
    SILVA GONCALVES (R$ 9.690,15), todos com média 0,0000. O km 1 vem do PDF; as
@@ -86,8 +90,8 @@ conferido com `scripts/conferir_xlsx.py`. Traz os mesmos lançamentos e o
 - Resumos do bônus idênticos ao PDF nos 92 (frete, viagens, viras, carregamento,
   lonas, quantidades, subtotal) e linhas idênticas uma a uma.
 - Com os valores sem arredondamento, as linhas somam exatamente o resumo em todos
-  os motoristas, **exceto** os 4 achados reais: frete de 0752, 0521 e 0527 e a vira
-  de 0763 — que, portanto, vêm do sistema, não do PDF.
+  os motoristas, **exceto** o frete de 0752, 0521 e 0527 — que, portanto, vem do
+  sistema, não do PDF. (A vira de 0763 é explicada pela regra da vira com viagem.)
 - Não se aplica aos achados de premiação: 0720 (premiação em branco), KM = 1 e o
   arredondamento do `TOTAL` dependem do bloco de prêmio, que só existe no PDF.
 - Nenhum número da planilha ou do painel mudou com o confronto.

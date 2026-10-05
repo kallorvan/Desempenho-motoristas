@@ -14,7 +14,7 @@ from pathlib import Path
 
 RAIZ = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(RAIZ / 'scripts'))
-from comum import GRUPOS, derivar  # noqa: E402
+from comum import GRUPOS, derivar, vira_nao_computada  # noqa: E402
 
 NUM = r'-?[\d.]+,\d{2}'
 
@@ -138,7 +138,7 @@ def main():
         b['txt'] += txt[m.end():fim] + '\n'
 
     rel = {'identidade': [], 'frete': [], 'rubricas': [], 'premio': [], 'duplicados': [],
-           'totalPdf': [], 'arred': [], 'eventos': [], 'falhas': [], 'arredLinhas': 0}
+           'totalPdf': [], 'arred': [], 'eventos': [], 'falhas': [], 'arredLinhas': 0, 'viraRegra': []}
     rows = []
     for cod, b in blocos.items():
         t = b['txt']
@@ -165,8 +165,14 @@ def main():
         if abs(sf - rb['frete']) > 0.005:
             rel['frete'].append(f'{cod} {b["nome"]}: resumo {rb["frete"]:,.2f} × linhas {sf:,.2f} '
                                 f'(dif. {rb["frete"] - sf:+,.2f})')
+        descart = vira_nao_computada(lanc)
+        for x in descart:
+            rel['viraRegra'].append(f'{cod} {b["nome"]}: {x["doc"]} vira R$ {x["vira"]:,.2f} na mesma linha '
+                                    f'de viagem R$ {x["viagem"]:,.2f}')
         for k, rk in (('viagem', 'vViag'), ('vira', 'vVira'), ('carreg', 'vCarreg'), ('lona', 'vLona')):
             s = soma(k)
+            if k == 'vira':
+                s = round(s - sum(x['vira'] for x in descart), 2)
             if abs(s - rb[rk]) > 0.055:
                 rel['rubricas'].append(f'{cod} {b["nome"]}: {rk} resumo {rb[rk]:,.2f} × linhas {s:,.2f} '
                                        f'(dif. {rb[rk] - s:+,.2f})')
@@ -238,6 +244,7 @@ def main():
                ('rubricas', 'Rubricas do bônus × lançamentos (mantido o resumo)'),
                ('totalPdf', 'TOTAL impresso × bônus + premiação'),
                ('duplicados', 'Blocos de prêmio duplicados'),
+               ('viraRegra', 'Vira não computada por estar na linha de uma viagem paga (regra do Rodopar)'),
                ('eventos', 'Lançamentos de evento (E:) — incentivo/ajuda'),
                ('arred', 'Arredondamento de R$ 0,01 (planilha usa a soma)')]
     for k, t in titulos:

@@ -18,6 +18,8 @@ from pathlib import Path
 from openpyxl import load_workbook
 
 RAIZ = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(RAIZ / 'scripts'))
+from comum import vira_nao_computada  # noqa: E402
 _spec = importlib.util.spec_from_file_location('extrair', RAIZ / 'scripts' / '1_extrair.py')
 ex = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(ex)
@@ -86,9 +88,13 @@ def main():
             vx = x['res'].get(kx, 0.0)
             if abs(round(vx + 1e-9, 2) - p[kp]) > 0.005:
                 res.append(f'{cod} {x["nome"]}: {kx} PDF {p[kp]:,.2f} × xlsx {vx:,.4f}')
-            if kl and abs(sum(l[kl] for l in x['l']) - vx) > 0.005:
-                fonte.append(f'{cod} {x["nome"]}: {kx.rstrip(":#v")} resumo {vx:,.2f} × linhas '
-                             f'{sum(l[kl] for l in x["l"]):,.2f} (dif. {vx - sum(l[kl] for l in x["l"]):+,.2f})')
+            if kl:
+                s = sum(l[kl] for l in x['l'])
+                if kl == 'vira':
+                    s -= sum(l['vira'] for l in vira_nao_computada(x['l']))
+                if abs(s - vx) > 0.005:
+                    fonte.append(f'{cod} {x["nome"]}: {kx.rstrip(":#v")} resumo {vx:,.2f} × linhas '
+                                 f'{s:,.2f} (dif. {vx - s:+,.2f})')
         P = PL[cod]
         if len(P) != len(x['l']):
             lin.append(f'{cod}: {len(P)} linhas no PDF × {len(x["l"])} no xlsx')

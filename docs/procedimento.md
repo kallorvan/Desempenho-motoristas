@@ -47,6 +47,12 @@ o mesmo caminho de arquivo mantém a URL.
 - `Total premiação = prêmio por economia + bônus por média`
 - `Total bonificações = bônus operacional + total premiação`
 - `Frete cliente do motorista = soma dos lançamentos do bloco` (exceções viram achado)
+- `Total de viras = soma das viras das linhas sem pagamento de viagem` — **regra do
+  Rodopar**: vira lançada na mesma linha de um pagamento de viagem (`VIAGEM > 0`)
+  não é computada. Os scripts aplicam a regra (`comum.vira_nao_computada`) e listam
+  as viras descartadas à parte, sem tratá-las como divergência. Confirmada em
+  set/2026 nos 92 motoristas (0763, R$ 55,00). Provável explicação também do
+  achado 2 de jul/2026 (0727 Valdir, vira de R$ 55,00 "lançada e não paga").
 
 ## Armadilhas conhecidas do PDF
 
