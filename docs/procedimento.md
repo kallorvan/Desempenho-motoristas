@@ -140,6 +140,15 @@ a partir de `dados/*.json` — acrescentar um mês é só gravar o JSON e rodar 
 comparativos e o histórico do painel individual passam a considerar o mês novo
 sozinhos.
 
+**Critério de avaliação — 4.000 km.** Regra da empresa: só é avaliado quem rodou
+ao menos 4.000 km no mês (`comum.KM_MIN`). É a mesma regra do Rodopar: em jul–set/2026,
+`POSIÇÃO NO GRUPO > 0` ⇔ km ≥ 4.000, sem exceção. Abaixo disso (manobristas, novos,
+lançamento sem km) o motorista fica **fora dos rankings e das comparações** do
+painel (ranking top 12, posição de frete/bonificação, "comparado à frota", média
+de referência), com etiqueta "fora do critério" e um card próprio na Visão geral
+com o que foi pago a eles. **Os totais da frota continuam com todos** (foi pago).
+A planilha não muda — segue o modelo.
+
 Abas: **Visão geral** (KPIs, composição, grupos, ranking, tabela) · **Por
 motorista** (ficha individual, comparação com a frota, histórico mês a mês) ·
 **Evolução** (frota mês a mês e variação por motorista). Identidade visual

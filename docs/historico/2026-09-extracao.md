@@ -130,6 +130,17 @@ conferido com `scripts/conferir_xlsx.py`. Traz os mesmos lançamentos e o
   arredondamento do `TOTAL` dependem do bloco de prêmio, que só existe no PDF.
 - Nenhum número da planilha ou do painel mudou com o confronto.
 
+## Motoristas abaixo de 4.000 km (fora do critério)
+
+Informado pelo usuário: os lançamentos com frete e sem média (0923, 0606, 0922 —
+`KM RODADO: 1`) foram lançamento e pagamento errados; são manobristas ou
+motoristas novos, e a empresa só considera para avaliação quem passa de 4.000 km.
+Não há mais como ajustar o pagamento. Tratamento: no painel, os 15 motoristas
+abaixo de 4.000 km em set/2026 ficam fora dos rankings e das comparações, com
+card próprio — R$ 10.555,78 pagos a eles (3,7% do total), sendo R$ 8.882,43 de
+bônus operacional e R$ 1.673,35 de premiação. Totais da frota mantidos com todos.
+(Jul/2026: 12 motoristas; ago/2026: 13.)
+
 ## Movimentação do quadro
 
 - Entraram (5): 0932 ESTEVAO DA SILVA MOTA, 0923 FERNANDO DOS SANTOS MARQUES,

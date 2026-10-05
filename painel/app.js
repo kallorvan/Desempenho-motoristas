@@ -41,7 +41,23 @@ const GROUPS = [...new Set(ALLROWS.map(d=>d.grupo))].sort((a,b)=>
 const gcol = g => GCOL[GROUPS.indexOf(g) % GCOL.length];
 
 const isManobrista = d => d.frete === 0;
-let ATIVOS = DATA.filter(d=>!isManobrista(d));
+
+/* critério de avaliação: só quem rodou ao menos KM_MIN no mês entra nos rankings e
+   nas comparações com a frota; os totais da frota continuam com todos (foi pago) */
+const KM_MIN = __KM_MIN__;
+const isAvaliado = d => d.km >= KM_MIN;
+const motivoFora = d => isManobrista(d) ? 'manobrista / sem frete' : (d.km <= 2 ? 'sem km apurado' : nf(d.km)+' km');
+let ATIVOS = DATA.filter(d=>isAvaliado(d) && !isManobrista(d));
+let RK = {};
+function calcRanks(){
+  RK = {};
+  const pool = DATA.filter(isAvaliado);
+  const rank = (arr,k) => { const v = arr.map(d=>d[k]); arr.forEach(d=>{ (RK[d.cod] ||= {})[k] = 1 + v.filter(x=>x>d[k]).length; }); };
+  rank(pool.filter(d=>d.frete>0),'frete');
+  rank(pool.filter(d=>d.bonif>0),'bonif');
+}
+const rkF = d => RK[d.cod] && RK[d.cod].frete, rkB = d => RK[d.cod] && RK[d.cod].bonif;
+const tagFora = d => isAvaliado(d) ? '' : `<span class="tagx fora" title="Abaixo de ${nf(KM_MIN)} km no mês: fora dos rankings e das comparações">fora do critério · ${motivoFora(d)}</span>`;
 
 /* ================= SELETOR DE MÊS ================= */
 const mesSel = document.getElementById('mes');
@@ -114,10 +130,34 @@ function renderGrupos(){
     </div>`).join('');
 }
 
+/* motoristas fora do critério (abaixo de KM_MIN) */
+function renderFora(){
+  const F = T.fora, rows = DATA.filter(d=>!isAvaliado(d)).sort((a,b)=>b.bonif-a.bonif);
+  document.getElementById('fora-note').textContent = `abaixo de ${nf(KM_MIN)} km no mês · fora dos rankings e das comparações`;
+  document.getElementById('fora').innerHTML = !rows.length
+    ? `<div style="color:var(--muted);font-size:12.5px">Todos os motoristas do mês rodaram ${nf(KM_MIN)} km ou mais.</div>`
+    : `<div class="mini" style="margin-bottom:14px">
+        <div><div class="lab">Motoristas</div><div class="val">${F.n} <small>de ${DATA.length}</small></div></div>
+        <div><div class="lab">Bonificação paga</div><div class="val"><small>R$ </small>${brl(F.bonif)} <small>${pct(F.bonif/T.totalBonif,1)} do total</small></div></div>
+        <div><div class="lab">Bônus operacional</div><div class="val"><small>R$ </small>${brl(F.bonusOp)}</div></div>
+        <div><div class="lab">Premiação</div><div class="val"><small>R$ </small>${brl(F.premTot)}</div></div>
+      </div>
+      <div class="fora-list">${rows.map(d=>`
+        <button data-cod="${d.cod}" class="fora-row">
+          <span class="nm">${d.nome} <span class="gtag num">${d.cod}</span></span>
+          <span class="fm">${motivoFora(d)}</span>
+          <span class="num fv">R$ ${brl(d.bonif)}</span>
+        </button>`).join('')}</div>
+      <div class="tbl-foot">Os valores continuam nos totais da frota (foram pagos). Frete desses motoristas: R$ ${brl(F.frete)}.</div>`;
+}
+document.getElementById('fora').addEventListener('click',e=>{
+  const b=e.target.closest('button[data-cod]'); if(b) openDriver(b.dataset.cod);
+});
+
 /* ranking */
 const METRICS = {
   frete:{lab:'Frete cliente', fmt:v=>'R$ '+brl(v), pool:()=>ATIVOS},
-  bonif:{lab:'Bonificações',  fmt:v=>'R$ '+brl(v), pool:()=>DATA},
+  bonif:{lab:'Bonificações',  fmt:v=>'R$ '+brl(v), pool:()=>ATIVOS},
   km:   {lab:'KM rodado',     fmt:v=>nf(v)+' km',  pool:()=>ATIVOS},
   media:{lab:'Média km/l',    fmt:v=>nf(v,3)+' km/l', pool:()=>ATIVOS},
   econ: {lab:'Economia',      fmt:v=>'R$ '+brl(v), pool:()=>ATIVOS},
@@ -149,24 +189,26 @@ document.getElementById('rank-ctl').addEventListener('click',e=>{
 /* tabela */
 const COLS = [
   {k:'cod',  l:'Cód.',      f:d=>`<span class="num">${d.cod}</span>`},
-  {k:'nome', l:'Motorista', f:d=>`<strong style="font-weight:600">${d.nome}</strong><br><span class="gtag"><span class="gdot" style="background:${gcol(d.grupo)}"></span>${short(d.grupo)}</span>`},
+  {k:'nome', l:'Motorista', f:d=>`<strong style="font-weight:600">${d.nome}</strong><br><span class="gtag"><span class="gdot" style="background:${gcol(d.grupo)}"></span>${short(d.grupo)}</span>${tagFora(d)}`},
   {k:'frete',l:'Frete (R$)',f:d=>`<span class="num">${brl(d.frete)}</span>`},
   {k:'bonif',l:'Bonif. (R$)',f:d=>`<span class="num">${brl(d.bonif)}</span>`},
   {k:'pctBF',l:'% Bonif./frete', f:d=>`<span class="num">${typeof d.pctBF==='number'?pct(d.pctBF,2):'<span style="color:var(--muted);font-size:11px">manobrista</span>'}</span>`},
-  {k:'part', l:'Part. % frete',  f:d=>`<span class="num">${pct(d.part,2)}</span>${d.rF?`<span class="rk-tag num">#${d.rF}</span>`:''}`},
+  {k:'part', l:'Part. % frete',  f:d=>`<span class="num">${pct(d.part,2)}</span>${rkF(d)?`<span class="rk-tag num">#${rkF(d)}</span>`:''}`},
   {k:'viag', l:'Viagens',   f:d=>`<span class="num">${nf(d.viag)}</span>`},
   {k:'km',   l:'KM',        f:d=>`<span class="num">${nf(d.km)}</span>`},
   {k:'media',l:'km/l',      f:d=>`<span class="num">${d.media?nf(d.media,3):'—'}</span>`},
   {k:'pos',  l:'Pos. grupo',f:d=>`<span class="num">${d.pos||'—'}</span>`},
 ];
 let sortK='frete', sortDir=-1;
-const q = document.getElementById('q'), fg = document.getElementById('fgrupo');
+const q = document.getElementById('q'), fg = document.getElementById('fgrupo'), fc = document.getElementById('fcrit');
 [...GROUPS].sort((a,b)=>gcode(a)-gcode(b)).forEach(g=>fg.insertAdjacentHTML('beforeend',`<option value="${g}">${shortTxt(g)}</option>`));
 document.getElementById('thead').innerHTML = COLS.map(c=>`<th data-k="${c.k}">${c.l}<span class="ar"></span></th>`).join('');
 
 function renderTable(){
   const term = q.value.trim().toLowerCase(), g = fg.value;
-  let rows = DATA.filter(d=>(!g||d.grupo===g) && (!term || d.nome.toLowerCase().includes(term) || d.cod.includes(term)));
+  const c = fc.value;
+  let rows = DATA.filter(d=>(!g||d.grupo===g) && (!term || d.nome.toLowerCase().includes(term) || d.cod.includes(term))
+    && (!c || (c==='aval') === isAvaliado(d)));
   rows.sort((a,b)=>{
     if(sortK==='nome'||sortK==='cod') return String(a[sortK]).localeCompare(String(b[sortK]),'pt-BR')*sortDir;
     const x = typeof a[sortK]==='number'?a[sortK]:-1, y = typeof b[sortK]==='number'?b[sortK]:-1;
@@ -188,7 +230,7 @@ document.getElementById('thead').addEventListener('click',e=>{
   if(sortK===th.dataset.k) sortDir*=-1; else {sortK=th.dataset.k; sortDir = th.dataset.k==='nome'||th.dataset.k==='cod' ? 1 : -1;}
   renderTable();
 });
-q.addEventListener('input',renderTable); fg.addEventListener('change',renderTable);
+q.addEventListener('input',renderTable); fg.addEventListener('change',renderTable); fc.addEventListener('change',renderTable);
 
 /* ================= INDIVIDUAL ================= */
 let ORDER = [], cur = 0;
@@ -204,7 +246,7 @@ const CMP = [
 ];
 const FLEETK = {fpv:'freteMedioViagem', bpv:'bonifMediaViagem', fkm:'fretePorKm', bkm:'bonifPorKm',
                 media:'media', pctBF:'pctBonifFrete'};
-const fleetVal = k => k==='part' ? 1/DATA.length : T[FLEETK[k]];
+const fleetVal = k => k==='part' ? 1/DATA.length : T.aval[FLEETK[k]];
 
 /* série do motorista mês a mês (usada no painel individual e na aba Evolução) */
 const serie = (cod,k)=> MESES.map(m=>{
@@ -237,13 +279,14 @@ function showDriver(i){
   document.getElementById('d-cod').textContent = 'MOTORISTA '+d.cod;
   document.getElementById('d-nome').textContent = d.nome;
 
-  const gRows = DATA.filter(x=>x.grupo===d.grupo);
+  const gRows = DATA.filter(x=>x.grupo===d.grupo && isAvaliado(x));
   document.getElementById('d-meta').innerHTML = [
     `<span class="pill">${mlab(MES)}</span>`,
     `<span class="pill"><span class="gdot" style="background:${gcol(d.grupo)}"></span>${short(d.grupo)}</span>`,
     d.pos ? `<span class="pill">Posição no grupo <b>${d.pos} de ${gRows.length}</b></span>` : '',
-    d.rF  ? `<span class="pill">Rank de frete <b>${d.rF} de ${ATIVOS.length}</b></span>` : '',
-    d.rB  ? `<span class="pill">Rank de bonificação <b>${d.rB} de ${DATA.length}</b></span>` : '',
+    rkF(d) ? `<span class="pill">Rank de frete <b>${rkF(d)} de ${DATA.filter(x=>isAvaliado(x)&&x.frete>0).length}</b></span>` : '',
+    rkB(d) ? `<span class="pill">Rank de bonificação <b>${rkB(d)} de ${DATA.filter(x=>isAvaliado(x)&&x.bonif>0).length}</b></span>` : '',
+    !isAvaliado(d) ? `<span class="pill warn">Fora do critério · ${motivoFora(d)} (mínimo ${nf(KM_MIN)} km) · sem ranking</span>` : '',
     isManobrista(d) ? `<span class="pill warn">Sem frete faturado no período</span>` : ''
   ].filter(Boolean).join('');
 
@@ -257,7 +300,7 @@ function showDriver(i){
   document.getElementById('d-viag-sub').textContent = nf(d.vira)+' com vira · '+nf(d.vira-d.viag)+' viras';
   document.getElementById('d-media').textContent = d.media?nf(d.media,3):'—';
   document.getElementById('d-media-sub').textContent = d.media
-    ? (d.media>=T.media?'+':'')+nf((d.media/T.media-1)*100,1)+'% ante a média da frota' : 'sem consumo registrado';
+    ? (d.media>=T.aval.media?'+':'')+nf((d.media/T.aval.media-1)*100,1)+'% ante a média dos avaliados' : 'sem consumo registrado';
 
   renderComp(document.getElementById('d-stack'),document.getElementById('d-leg'),[
     {k:'Bônus operacional', v:d.bonusOp, c:'var(--ink)'},
@@ -285,7 +328,7 @@ function showDriver(i){
         <div class="f" style="width:${v!=null?Math.min(v/max*100,100):0}%"></div>
         <div class="mk" style="left:${Math.min(f/max*100,100)}%"></div>
       </div>
-      <div class="avg">${c.k==='part'?'Média por motorista':'Média da frota'}: ${c.fmt(f)}</div>
+      <div class="avg">${c.k==='part'?'Média por motorista':'Média dos avaliados (≥ '+nf(KM_MIN)+' km)'}: ${c.fmt(f)}</div>
     </div>`;
   }).join('');
 
@@ -346,7 +389,13 @@ function renderEvolucao(){
       <div class="val"><span class="num">${m.cfmt(a)}</span></div>
       <div class="sub">${B?`${mshort(B)} ${m.cfmt(b)}`:'—'}${dl!=null?`<span class="delta ${dl>=0?'up':'down'}">${sgn(dl)}</span>`:''}</div>
     </div>`;
-  }).join('');
+  }).join('') + (()=>{
+    const a = TOTAIS[A].fora, b = B ? TOTAIS[B].fora : null;
+    const dl = b && b.bonif ? a.bonif/b.bonif-1 : null;
+    return `<div class="kpi k3"><div class="lab">Pago fora do critério</div>
+      <div class="val"><span class="num">R$ ${compact(a.bonif)}</span></div>
+      <div class="sub">${a.n} mot. &lt; ${nf(KM_MIN)} km${b?` · ${mshort(B)} R$ ${compact(b.bonif)}`:''}${dl!=null?`<span class="delta ${dl<=0?'up':'down'}">${sgn(dl)}</span>`:''}</div></div>`;
+  })();
 
   /* --- barras por mês (métrica selecionada) --- */
   const bars = MESES.map(m=>({m, v:TOTAIS[m][M.tot]}));
@@ -392,6 +441,7 @@ function renderEvolucao(){
   if(evOnly==='subiu') rows = rows.filter(r=>r.dl!=null && r.dl>0);
   if(evOnly==='caiu')  rows = rows.filter(r=>r.dl!=null && r.dl<0);
   if(evOnly==='novos') rows = rows.filter(r=>r.sit!=='ambos');
+  if(evOnly==='fora')  rows = rows.filter(r=>{ const l = DATASETS[A].find(x=>x.cod===r.cod); return l && !isAvaliado(l); });
   rows.sort((x,y)=>{
     if(evSort==='delta') return (y.dl??-Infinity)-(x.dl??-Infinity);
     if(evSort==='queda') return (x.dl??Infinity)-(y.dl??Infinity);
@@ -404,6 +454,7 @@ function renderEvolucao(){
       <div class="evr-n">
         <div class="nm">${r.nome}</div>
         <span class="gtag"><span class="gdot" style="background:${gcol(r.grupo)}"></span>${short(r.grupo)}</span>
+        ${(()=>{ const l = DATASETS[A].find(x=>x.cod===r.cod); return l ? tagFora(l) : ''; })()}
         ${r.sit!=='ambos'?`<span class="tagx ${r.sit}">${r.sit==='entrou'?'entrou em '+mshort(A):'sem registro em '+mshort(A)}</span>`:''}
       </div>
       <div class="evr-b">
@@ -473,9 +524,10 @@ document.getElementById('rank').addEventListener('click',e=>{
 function renderMes(keepCod){
   DATA = DATASETS[MES];
   T    = TOTAIS[MES];
-  ATIVOS = DATA.filter(d=>!isManobrista(d));
+  ATIVOS = DATA.filter(d=>isAvaliado(d) && !isManobrista(d));
+  calcRanks();
   document.getElementById('per-lab').innerHTML = `${mlab(MES)} · <strong>${DATA.length} motoristas</strong>`;
-  renderKPIs(); renderComposicao(); renderGrupos(); renderRank(); renderTable();
+  renderKPIs(); renderComposicao(); renderGrupos(); renderFora(); renderRank(); renderTable();
   renderIndividual(keepCod);
 }
 renderMes();

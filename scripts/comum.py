@@ -63,3 +63,13 @@ def vira_nao_computada(linhas):
     """Regra do Rodopar: vira lançada na mesma linha de um pagamento de viagem não é
     computada no TOTAL DE VIRAS (ex.: 0763, set/2026, R$ 55,00)."""
     return [x for x in linhas if x['vira'] and x['viagem']]
+
+
+# Critério da empresa: só entra na avaliação (rankings, comparação com a frota)
+# quem rodou ao menos KM_MIN no mês. Abaixo disso: manobristas, motoristas novos ou
+# lançamento sem km apurado. Os totais da frota continuam com todos (foi pago).
+KM_MIN = 4000
+
+
+def avaliado(r):
+    return r['km'] >= KM_MIN

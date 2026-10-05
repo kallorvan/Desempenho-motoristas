@@ -238,6 +238,17 @@ footer{margin-top:34px;font-size:11px;color:var(--muted);line-height:1.6;border-
 .tagx{display:inline-block;margin-left:8px;font-size:10px;font-weight:600;padding:2px 7px;border-radius:999px;
   background:rgba(221,70,99,.12);color:var(--coral)}
 .tagx.entrou{background:rgba(30,142,90,.13);color:#1E8E5A}
+.tagx.fora{background:rgba(244,211,141,.45);color:#6B4E0E}
+.fora-list{display:grid;border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.fora-row{appearance:none;border:0;border-bottom:1px solid var(--line);background:var(--card);font:inherit;color:inherit;cursor:pointer;
+  display:grid;grid-template-columns:minmax(0,1fr) auto 110px;gap:12px;align-items:center;padding:9px 12px;text-align:left;font-size:12.5px}
+.fora-row:last-child{border-bottom:0}
+.fora-row:hover{background:#F6F7FB} .fora-row:hover .nm{color:var(--coral)}
+.fora-row:focus-visible{outline:2px solid var(--coral);outline-offset:-2px}
+.fora-row .nm{font-weight:600;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.fora-row .fm{font-size:11px;color:var(--muted);white-space:nowrap}
+.fora-row .fv{text-align:right;font-weight:600}
+@media (max-width:640px){.fora-row{grid-template-columns:minmax(0,1fr) auto}.fora-row .fm{grid-column:1}}
 .ev-tools{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:11px}
 .ev-tools select{min-width:150px}
 @media (max-width:820px){
@@ -316,6 +327,11 @@ footer{margin-top:34px;font-size:11px;color:var(--muted);line-height:1.6;border-
     </div>
 
     <div class="sec">
+      <div class="sec-h"><h2>Fora do critério</h2><span class="sec-note" id="fora-note"></span></div>
+      <div class="card pad" id="fora"></div>
+    </div>
+
+    <div class="sec">
       <div class="sec-h">
         <h2>Ranking · top 12</h2>
         <div class="rank-ctl" id="rank-ctl">
@@ -329,13 +345,15 @@ footer{margin-top:34px;font-size:11px;color:var(--muted);line-height:1.6;border-
         </div>
       </div>
       <div class="card"><div class="rank-list" id="rank"></div></div>
+      <div class="tbl-foot">Só motoristas avaliados (4.000 km ou mais no mês).</div>
     </div>
 
     <div class="sec">
-      <div class="sec-h"><h2>Todos os motoristas</h2><span class="sec-note">#n na coluna de participação = posição no ranking de frete · clique na linha para abrir o painel individual</span></div>
+      <div class="sec-h"><h2>Todos os motoristas</h2><span class="sec-note">#n na coluna de participação = posição no ranking de frete entre os avaliados · clique na linha para abrir o painel individual</span></div>
       <div class="tools">
         <input type="search" id="q" placeholder="Buscar por nome ou código…" aria-label="Buscar motorista">
         <select id="fgrupo" aria-label="Filtrar por grupo"><option value="">Todos os grupos</option></select>
+        <select id="fcrit" aria-label="Filtrar por critério"><option value="">Avaliados e fora do critério</option><option value="aval">Só avaliados (≥ 4.000 km)</option><option value="fora">Só fora do critério</option></select>
       </div>
       <div class="tbl-scroll card">
         <table>
@@ -384,7 +402,7 @@ footer{margin-top:34px;font-size:11px;color:var(--muted);line-height:1.6;border-
     </div>
 
     <div class="sec">
-      <div class="sec-h"><h2>Comparado à frota</h2><span class="sec-note">traço cinza = média da frota</span></div>
+      <div class="sec-h"><h2>Comparado à frota</h2><span class="sec-note">traço cinza = média dos motoristas avaliados (≥ 4.000 km)</span></div>
       <div class="card"><div class="cmp" id="d-cmp"></div></div>
     </div>
 
@@ -439,6 +457,7 @@ footer{margin-top:34px;font-size:11px;color:var(--muted);line-height:1.6;border-
           <option value="subiu">Só quem subiu</option>
           <option value="caiu">Só quem caiu</option>
           <option value="novos">Entradas e saídas</option>
+          <option value="fora">Fora do critério no último mês</option>
         </select>
       </div>
       <div class="card ev-list" id="ev-list"></div>

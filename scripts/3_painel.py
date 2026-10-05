@@ -12,7 +12,7 @@ from pathlib import Path
 
 RAIZ = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(RAIZ / 'scripts'))
-from comum import totais  # noqa: E402
+from comum import KM_MIN, avaliado, totais  # noqa: E402
 
 MESES = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto',
          'Setembro', 'Outubro', 'Novembro', 'Dezembro']
@@ -32,13 +32,19 @@ def main():
         rows = json.loads(f.read_text(encoding='utf8'))
         datasets[mes] = [{k: r[k] for k in CAMPOS} for r in rows]
         tots[mes] = totais(rows)
+        aval = [r for r in rows if avaliado(r)]
+        fora = [r for r in rows if not avaliado(r)]
+        tots[mes]['aval'] = totais(aval)
+        s = lambda k: round(sum(r[k] for r in fora), 2)  # noqa: E731
+        tots[mes]['fora'] = {'n': len(fora), 'frete': s('frete'), 'bonusOp': s('bonusOp'),
+                             'premTot': s('premTot'), 'bonif': s('bonif'), 'km': s('km')}
         aaaa, mm = mes.split('-')
         nome = MESES[int(mm) - 1]
         mlabel[mes] = f'{nome} / {aaaa}'
         mshort[mes] = f'{nome[:3]}/{aaaa[2:]}'
 
     app = (RAIZ / 'painel' / 'app.js').read_text(encoding='utf8')
-    for k, v in (('__DATASETS__', datasets), ('__TOTAIS__', tots), ('__MLABEL__', mlabel), ('__MSHORT__', mshort)):
+    for k, v in (('__KM_MIN__', KM_MIN), ('__DATASETS__', datasets), ('__TOTAIS__', tots), ('__MLABEL__', mlabel), ('__MSHORT__', mshort)):
         assert app.count(k) == 1, f'placeholder {k} deve aparecer uma vez em app.js'
         app = app.replace(k, js(v))
     base = (RAIZ / 'painel' / 'base.html').read_text(encoding='utf8')
