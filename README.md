@@ -19,11 +19,9 @@ comissão" do Rodopar.
 
 ## Estado atual
 
-Os scripts em `scripts/` ainda **não existem** — precisam ser escritos na primeira
-sessão, seguindo `docs/procedimento.md`, que descreve o formato do PDF, as regras
-de validação e o layout exato da planilha.
+Os três scripts estão em `scripts/` (com `comum.py`, que guarda a tabela de grupos
+e as colunas derivadas). Julho, agosto e setembro de 2026 estão em `dados/`.
 
-As bases de julho e agosto de 2026 também precisam ser recuperadas: elas estão
-embutidas no `Dashboard_Produtividade_Motoristas.html` que você já baixou, dentro
-da variável `const DATASETS`. Coloque esse HTML na raiz da pasta e peça ao Claude
-Code para extrair os dois meses para `dados/2026-07.json` e `dados/2026-08.json`.
+As bases de julho e agosto de 2026 e a casca do painel (`painel/base.html` +
+`painel/app.js`) já foram recuperadas do painel publicado — ver `dados/LEIA-ME.md`
+e `painel/LEIA-ME.md`.

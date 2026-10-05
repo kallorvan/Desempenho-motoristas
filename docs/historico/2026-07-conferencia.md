@@ -29,6 +29,9 @@ Esse xlsx é o **modelo** que os meses seguintes replicam.
 
 1. **Carregamento +R$ 2.834,21** acima da soma dos lançamentos (resumos R$ 7.409,21 × linhas R$ 4.575,00), concentrado em 0501 Gabriel (1.138,49 × 325,00), 0797 Robison (1.970,72 × 50,00) e 0357 Thiago de Jesus (100,00 com quantidade 0).
 2. **Vira de R$ 55,00 lançada e não paga** — 0727 Valdir, doc. 3-001-019590 de 03/07.
+   *(Nota de set/2026: provavelmente a regra do Rodopar de que vira na mesma linha
+   de um pagamento de viagem não é computada — ver `docs/procedimento.md`. Não
+   reconferido: o PDF de julho não está no repositório.)*
 3. **Prêmio de R$ 133,75 sem motorista identificado** (código `#VALUE!` no Excel; 780 km, média 2,1584).
 4. **% do prêmio por economia varia dentro do mesmo grupo**: 30% (47), 25% (17), 20% (5), 45% (4), 50% (3). Critério não documentado nos arquivos.
 5. **Contagem de viagens**: coluna VG soma 637 × 640 informados — mesmos três motoristas do item 1.

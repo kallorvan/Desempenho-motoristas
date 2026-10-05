@@ -8,8 +8,8 @@ multimês.
 
 | Comando | O que faz |
 |---|---|
-| `python3 scripts/1_extrair.py entrada/<arquivo>.pdf AAAA-MM` | Lê o PDF, confere lançamentos × resumos, grava `dados/AAAA-MM.json` e imprime o relatório de conferência |
-| `python3 scripts/2_planilha.py AAAA-MM` | Gera `saida/Indicadores_Produtividade_Motoristas_MM_AAAA.xlsx` |
+| `python3 scripts/1_extrair.py entrada/<arquivo>.pdf AAAA-MM` | Lê o PDF, confere lançamentos × resumos, grava `dados/AAAA-MM.json` e imprime o relatório de conferência (detalhe em `saida/conferencia_AAAA-MM.json`) |
+| `python3 scripts/2_planilha.py AAAA-MM` | Gera `saida/Indicadores_Produtividade_Motoristas_MM_AAAA.xlsx` já recalculado pelo LibreOffice e conferido sem erros |
 | `python3 scripts/3_painel.py` | Lê todo `dados/*.json` e gera `saida/Dashboard_Produtividade_Motoristas.html` |
 | `soffice --headless --convert-to xlsx --outdir /tmp <arq>.xlsx` | Recalcula as fórmulas do xlsx (LibreOffice precisa estar instalado) |
 
@@ -17,7 +17,7 @@ Dependências: `python3`, `openpyxl`, `poppler-utils` (dá o `pdftotext`), Libre
 
 ```bash
 pip install openpyxl
-# Debian/Ubuntu: sudo apt install poppler-utils libreoffice
+# Debian/Ubuntu: sudo apt install poppler-utils libreoffice-calc
 # macOS:         brew install poppler && brew install --cask libreoffice
 ```
 

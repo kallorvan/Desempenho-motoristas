@@ -1,4 +1,5 @@
 entrada/*.pdf
+entrada/*.xlsx
 saida/
 *.txt
 __pycache__/
