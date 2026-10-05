@@ -4,7 +4,9 @@
 
 Fonte: `Bonus_Viagens__Premio_Media_09.2026.pdf` (94 págs., 1.556 lançamentos —
 1.521 `M:`, 26 `O:`, 9 `E:` —, 92 motoristas). Fechamento de média 02/09–01/10/2026;
-fechamento de viagens 01/09–30/09/2026.
+fechamento de viagens 01/09–30/09/2026. **Versão corrigida do PDF** (reemitida
+no Rodopar para o 0720); a única diferença para a primeira versão é o bloco de
+prêmio do 0720.
 
 Primeiro mês rodado com os scripts (`scripts/1_extrair.py`, `2_planilha.py`,
 `3_painel.py`). Teste de regressão: a planilha gerada para julho e agosto a partir
@@ -19,11 +21,11 @@ originais em 100% dos campos.
 | Frete cliente¹ | R$ 8.496.376,83 | R$ 7.729.187,77 | +9,9% |
 | Bônus operacional | R$ 172.854,35 | R$ 156.703,54 | +10,3% |
 | Valor economia | R$ 309.382,78 | R$ 306.025,86 | +1,1% |
-| Prêmio por economia | R$ 89.844,28 | R$ 90.103,14 | −0,3% |
+| Prêmio por economia | R$ 92.071,85 | R$ 90.103,14 | +2,2% |
 | Bônus por média | R$ 17.126,69 | R$ 13.359,56 | +28,2% |
-| Total premiação | R$ 106.970,97 | R$ 103.462,70 | +3,4% |
-| Total bonificações | R$ 279.825,32 | R$ 260.166,24 | +7,6% |
-| % bonificação / frete | 3,29% | 3,37% | −0,07 p.p. |
+| Total premiação | R$ 109.198,54 | R$ 103.462,70 | +5,5% |
+| Total bonificações | R$ 282.052,89 | R$ 260.166,24 | +8,4% |
+| % bonificação / frete | 3,32% | 3,37% | −0,05 p.p. |
 | Viagens / viagem+vira | 706 / 731 | 656 / 674 | +7,6% / +8,5% |
 | KM rodado | 656.081 | 654.202 | +0,3% |
 | Média da frota (simples) | 2,1111 km/l | 2,1300 km/l | −0,9% |
@@ -34,12 +36,13 @@ resumo do PDF seria R$ 8.507.997,93.
 
 Leitura: frete +9,9% com km praticamente igual (+0,3%) — mais frete por km
 rodado (R$ 12,95/km contra R$ 11,81). A bonificação cresceu menos que o frete
-(+7,6%), e o custo de bonificação por real faturado caiu de 3,37% para 3,29%. O
+(+8,4%), e o custo de bonificação por real faturado caiu de 3,37% para 3,32%. O
 bônus operacional acompanha as viagens; o bônus por média subiu 28,2%.
 
 ## Achados da fonte (não corrigidos — mantido o valor do resumo)
 
-1. **0720 ADILSON DO NASCIMENTO — premiação em branco.** O bloco traz
+1. **0720 ADILSON DO NASCIMENTO — premiação em branco (RESOLVIDO).** Na primeira
+   versão do PDF o bloco trazia
    `BÔNUS POR MÉDIA: 445,51` (10% de R$ 4.455,14 de economia, 2º do grupo 48),
    mas `PRÊMIO POR ECONOMIA` e `TOTAL PREMIAÇÃO` estão vazios e o `TOTAL` impresso
    é **R$ 2.564,33** — só o bônus operacional. A planilha soma as parcelas
@@ -48,6 +51,12 @@ bônus operacional acompanha as viagens; o bônus por média subiu 28,2%.
    trazer os dados certos. **Pendente:** reprocessar setembro quando o PDF novo
    chegar (`1_extrair.py` → `2_planilha.py` → `3_painel.py`) e conferir o bloco do
    0720.
+   **PDF corrigido recebido e reprocessado:** `PRÊMIO POR ECONOMIA: 2.227,57`
+   (50% de R$ 4.455,14), `BÔNUS POR MÉDIA: 445,51`, `TOTAL PREMIAÇÃO: 2.673,08` e
+   `TOTAL: 5.237,41` — as identidades fecham. Na planilha: premiação R$ 2.673,08 e
+   total R$ 5.237,41 (era R$ 3.009,84); ranking de bonificação 42º → 8º. Total do
+   mês: premiação R$ 109.198,54, bonificações R$ 282.052,89. Nenhum outro
+   motorista mudou.
 2. **Frete do resumo maior que a soma das linhas** em 3 motoristas (todas as
    linhas foram lidas — a diferença está na fonte):
    0752 ANANIAS DOS REIS ROSA CANDIDO (+R$ 11.804,52), 0521 FLAVIO CUSTODIO ALVES
@@ -140,5 +149,4 @@ conferido com `scripts/conferir_xlsx.py`. Traz os mesmos lançamentos e o
 - **Out/2026 — 0752 ANANIAS DOS REIS ROSA CANDIDO:** conferir se entraram os
   **R$ 50,00** devidos por ter carregado as viagens do doc. `M: 1-001-077350`
   (set/2026), passadas para o 0765. Reportar se não aparecer.
-- **Set/2026 — 0720 ADILSON DO NASCIMENTO:** reprocessar setembro com o PDF
-  corrigido quando chegar.
+- ~~Set/2026 — 0720: reprocessar com o PDF corrigido~~ — feito.
