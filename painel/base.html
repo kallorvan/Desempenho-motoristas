@@ -29,7 +29,15 @@ body{
 .wrap{max-width:var(--maxw);margin:0 auto;padding:0 28px 64px}
 
 /* ---------- topo ---------- */
-header.top{background:var(--card);border-bottom:1px solid var(--line)}
+header.top{background:var(--card);border-bottom:1px solid var(--line);
+  position:sticky;top:0;z-index:50;transition:box-shadow .2s}
+header.top.stuck{box-shadow:0 4px 14px rgba(28,37,67,.10)}
+/* celular: depois de rolar, o cabeçalho fica só com o mês e as abas */
+@media (max-width:820px){
+  header.top.compact .brand, header.top.compact .titles, header.top.compact .per-lab{display:none}
+  header.top.compact .top-in{padding-top:10px}
+  header.top.compact nav.tabs{padding-top:6px}
+}
 .top-in{max-width:var(--maxw);margin:0 auto;padding:18px 28px 0;display:flex;flex-wrap:wrap;align-items:flex-end;gap:18px 24px}
 .brand{display:flex;align-items:center;gap:15px}
 /* as duas marcas foram normalizadas na mesma métrica (altura de caixa alta e

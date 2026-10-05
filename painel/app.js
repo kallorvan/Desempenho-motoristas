@@ -520,6 +520,16 @@ document.getElementById('rank').addEventListener('click',e=>{
   const b=e.target.closest('button[data-cod]'); if(b) openDriver(b.dataset.cod);
 });
 
+/* cabeçalho congelado: sombra só depois de rolar */
+const topHdr = document.querySelector('header.top');
+const marcaTopo = ()=>{
+  const y = window.scrollY;
+  topHdr.classList.toggle('stuck', y > 4);
+  /* histerese para não piscar quando a altura do cabeçalho muda no celular */
+  if(y > 200) topHdr.classList.add('compact'); else if(y < 40) topHdr.classList.remove('compact');
+};
+window.addEventListener('scroll', marcaTopo, {passive:true}); marcaTopo();
+
 /* ================= RENDER GERAL ================= */
 function renderMes(keepCod){
   DATA = DATASETS[MES];
