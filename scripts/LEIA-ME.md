@@ -1,18 +1,13 @@
 # scripts/
 
-Vazio de propósito. Os três scripts do pipeline precisam ser escritos na primeira
-sessão do Claude Code, a partir de `docs/procedimento.md`:
+- `1_extrair.py <pdf> <AAAA-MM>` — lê o PDF, confere lançamentos × resumos, grava
+  `dados/AAAA-MM.json` e imprime o relatório de conferência.
+- `2_planilha.py <AAAA-MM>` — gera o xlsx no modelo, recalcula no LibreOffice e
+  falha se sobrar célula com erro.
+- `3_painel.py` — junta `painel/base.html` + `painel/app.js` com todo `dados/*.json`.
+- `comum.py` — tabela de grupos e as contas das colunas derivadas (R–Y) e da linha
+  de total, compartilhadas pelos três.
 
-- `1_extrair.py <pdf> <AAAA-MM>` — `pdftotext -layout`, quebra em blocos por
-  `^ MOTORISTA: <nome> - COD.: <cod>`, lê os dois resumos, confere as linhas de
-  lançamento contra eles e grava `dados/AAAA-MM.json`. Imprime o relatório de
-  conferência: toda identidade que não fechar e todo frete que divergir.
-- `2_planilha.py <AAAA-MM>` — monta o xlsx replicando o layout descrito em
-  "Modelo da planilha" (25 colunas, duas abas, as cores e as fórmulas exatas).
-- `3_painel.py` — lê todo `dados/*.json`, calcula os totais e as colunas derivadas,
-  e injeta em `painel/app.js` + `painel/base.html`.
-
-Escreva um de cada vez e confira o resultado contra `docs/historico/` antes de
-seguir: julho e agosto de 2026 já têm os totais publicados ali, então servem de
-teste de regressão. Se `1_extrair.py` rodar sobre o PDF de agosto e não reproduzir
-R$ 7.729.187,77 de frete e 88 motoristas, tem algo errado no parser.
+Teste de regressão: `2_planilha.py 2026-07` e `2026-08` têm que dar R$ 268.181,88 e
+R$ 260.166,24 de bonificações, e `comum.derivar` tem que reproduzir as colunas
+derivadas de `dados/2026-07.json` e `2026-08.json` sem diferença.

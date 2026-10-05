@@ -4,8 +4,8 @@
 const DATASETS = __DATASETS__;
 const TOTAIS   = __TOTAIS__;
 const MESES    = Object.keys(DATASETS).sort();
-const MLABEL   = {'2026-07':'Julho / 2026','2026-08':'Agosto / 2026'};
-const MSHORT   = {'2026-07':'Jul/26','2026-08':'Ago/26'};
+const MLABEL   = __MLABEL__;
+const MSHORT   = __MSHORT__;
 const mlab  = m => MLABEL[m] || m;
 const mshort= m => MSHORT[m] || m;
 
@@ -480,4 +480,3 @@ function renderMes(keepCod){
 }
 renderMes();
 renderEvolucao();
-

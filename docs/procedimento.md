@@ -21,8 +21,9 @@ o mesmo caminho de arquivo mantém a URL.
 
 ## Passos
 
-1. **Extrair o texto do PDF** com layout preservado:
-   `pdftotext -layout entrada/<arquivo>.pdf /tmp/mes.txt`
+1. **Extrair o texto do PDF** com layout preservado e área ampliada (o recorte
+   padrão corta a coluna VIAGEM na borda direita):
+   `pdftotext -layout -x 0 -y 0 -W 3000 -H 3000 entrada/<arquivo>.pdf /tmp/mes.txt`
    Um motorista por bloco, delimitado por `^ MOTORISTA: <nome> - COD.: <cod>`.
 2. **Ler dois resumos por bloco**: `RESUMO DO BÔNUS` (quantidades à esquerda,
    valores à direita) e `RESUMO PRÊMIO POR MÉDIA` (média, grupo, posição,
@@ -32,7 +33,8 @@ o mesmo caminho de arquivo mantém a URL.
    **manter o valor do resumo**, que é o oficial do fechamento.
 4. **Montar a planilha** no modelo abaixo e recalcular as fórmulas com LibreOffice
    até não sobrar nenhum erro.
-5. **Atualizar o painel** acrescentando o mês em `DATASETS`/`TOTAIS`.
+5. **Atualizar o painel**: `python3 scripts/3_painel.py` lê todo `dados/*.json`;
+   revisar o rodapé de `painel/base.html` (fontes e notas do mês).
 6. **Registrar** um `docs/historico/AAAA-MM-extracao.md` com os achados do mês.
 
 ## Regras de validação (têm que fechar em 100% dos motoristas)
@@ -51,6 +53,15 @@ o mesmo caminho de arquivo mantém a URL.
 - **Nomes longos quebram a linha.** O nome do motorista pode ocupar uma linha e
   os números a seguinte. Casar as colunas pelo **fim da linha** (VG, LONA, VIRA,
   CARREGAMENTO, LONA, VIAGEM), nunca pelo começo.
+- **Destino longo quebra a linha depois dos números** (ex.: `SAO SEBASTIAO DO
+  PARAISO/MG` na linha seguinte). Procurar o bloco numérico em cada linha física
+  do lançamento, não só na junção.
+- **Nº RV com texto** (`PEND.`, `FERIAS`) ou em branco (linhas `E:`).
+- **Prêmio em branco.** Em set/2026 o 0720 trouxe `BÔNUS POR MÉDIA` preenchido com
+  `PRÊMIO POR ECONOMIA` e `TOTAL PREMIAÇÃO` vazios, e o `TOTAL` sem o bônus. A
+  planilha soma as parcelas; reportar como achado.
+- **Sem grupo / KM 1.** Motorista sem média vem com `GRUPO DE MAIOR KM: 0`, nome
+  vazio e `KM RODADO: 1`. Entra na tabela de classificação como `0 → SEM GRUPO`.
 - **Container com espaço no campo CT-e.** Nas linhas de vira (`O:`), o campo CT-e
   traz um container do tipo `MRSU 306.229-7`, com espaço — um `\S+` no regex
   desalinha tudo. Foi a causa de vários falsos positivos de conferência.
@@ -111,8 +122,8 @@ ficam vazias.
 ## Painel
 
 Arquivo único, multimês. `DATASETS` e `TOTAIS` são objetos indexados por mês
-(`"2026-07"`, `"2026-08"`). Para acrescentar um mês: adicionar a chave nos dois
-objetos e o rótulo em `MLABEL`/`MSHORT`. Seletor de mês, aba **Evolução**, KPIs
+(`"2026-07"`, `"2026-08"`). O `3_painel.py` monta os dois, e também `MLABEL`/`MSHORT`,
+a partir de `dados/*.json` — acrescentar um mês é só gravar o JSON e rodar o script. Seletor de mês, aba **Evolução**, KPIs
 comparativos e o histórico do painel individual passam a considerar o mês novo
 sozinhos.
 
@@ -134,6 +145,8 @@ Dínamo/Tóliman — navy `#1C2543`, coral `#DD4663`, mauve `#AE82B1`, areia `#F
 - **Média da frota** = média simples dos que têm consumo > 0. Em jul/2026 deu
   2,1141 (a ponderada por km daria 2,1027) — usar sempre a simples, é o que o
   modelo calcula.
+- **LibreOffice precisa do Calc.** Só o `libreoffice-core` não abre planilha
+  ("source file could not be loaded"): instalar `libreoffice-calc`.
 - **`openpyxl` não cacheia resultados de fórmula.** Depois de gerar o xlsx,
   recalcular com LibreOffice; antes disso toda fórmula lê como `None`.
 
