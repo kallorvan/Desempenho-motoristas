@@ -16,21 +16,24 @@ originais em 100% dos campos.
 
 | Indicador | Set/2026 | Ago/2026 | Var. |
 |---|---|---|---|
-| Frete cliente | R$ 8.507.997,93 | R$ 7.729.187,77 | +10,1% |
+| Frete cliente¹ | R$ 8.496.376,83 | R$ 7.729.187,77 | +9,9% |
 | Bônus operacional | R$ 172.854,35 | R$ 156.703,54 | +10,3% |
 | Valor economia | R$ 309.382,78 | R$ 306.025,86 | +1,1% |
 | Prêmio por economia | R$ 89.844,28 | R$ 90.103,14 | −0,3% |
 | Bônus por média | R$ 17.126,69 | R$ 13.359,56 | +28,2% |
 | Total premiação | R$ 106.970,97 | R$ 103.462,70 | +3,4% |
 | Total bonificações | R$ 279.825,32 | R$ 260.166,24 | +7,6% |
-| % bonificação / frete | 3,29% | 3,37% | −0,08 p.p. |
+| % bonificação / frete | 3,29% | 3,37% | −0,07 p.p. |
 | Viagens / viagem+vira | 706 / 731 | 656 / 674 | +7,6% / +8,5% |
 | KM rodado | 656.081 | 654.202 | +0,3% |
 | Média da frota (simples) | 2,1111 km/l | 2,1300 km/l | −0,9% |
 | Motoristas premiados | 79 | 79 | = |
 
-Leitura: frete +10,1% com km praticamente igual (+0,3%) — mais frete por km
-rodado (R$ 12,97/km contra R$ 11,81). A bonificação cresceu menos que o frete
+¹ Sem as viagens canceladas de 0521 e 0527 (ajuste autorizado, ver achado 2); pelo
+resumo do PDF seria R$ 8.507.997,93.
+
+Leitura: frete +9,9% com km praticamente igual (+0,3%) — mais frete por km
+rodado (R$ 12,95/km contra R$ 11,81). A bonificação cresceu menos que o frete
 (+7,6%), e o custo de bonificação por real faturado caiu de 3,37% para 3,29%. O
 bônus operacional acompanha as viagens; o bônus por média subiu 28,2%.
 
@@ -70,7 +73,13 @@ bônus operacional acompanha as viagens; o bônus por média subiu 28,2%.
      **R$ 50,00**, que será pago no fechamento de outubro (ver Pendências).
    - 0521 e 0527: os valores a mais são de **viagens canceladas** que ficaram no
      `TOTAL DE FRETE CLIENTE`.
-   Mantido o valor do resumo na planilha e no painel (regra do fechamento).
+   **Ajuste autorizado pelo usuário:** para 0521 e 0527 a planilha e o painel usam
+   o frete das viagens listadas, sem as canceladas — 0521 R$ 141.257,48 (era
+   150.378,58) e 0527 R$ 97.139,33 (era 99.639,33). Fica em
+   `dados/ajustes/2026-09.json` e o `1_extrair.py` reaplica a cada execução.
+   Frete da frota: R$ 8.496.376,83. Ranking de frete: 0521 passa de 4º para 5º,
+   0527 de 53º para 55º (0136, 0757 e 0231 sobem uma posição). Bonificações não
+   mudam. O 0752 segue com o frete do resumo (o frete é dele, que carregou).
 3. ~~Vira de 0763~~ — **explicado, não é divergência.** 0763 ALEXSANDRO DONIZETE
    PEREIRA tem R$ 155,00 de vira nas linhas e R$ 100,00 no resumo. Regra informada
    pelo usuário: vira lançada junto com pagamento de viagem não é computada. A vira

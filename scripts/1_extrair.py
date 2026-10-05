@@ -122,6 +122,25 @@ def escolher_premio(blocos):
     return max(blocos, key=chave)
 
 
+def aplicar_ajustes(rows, mes, rel):
+    """Exceções à regra "vale o resumo", autorizadas pelo usuário e documentadas em
+    dados/ajustes/AAAA-MM.json: {"<cod>": {"frete": "linhas", "motivo": "..."}}."""
+    arq = RAIZ / 'dados' / 'ajustes' / f'{mes}.json'
+    if not arq.exists():
+        return
+    ajustes = json.loads(arq.read_text(encoding='utf8'))
+    por_cod = {r['cod']: r for r in rows}
+    for cod, aj in ajustes.items():
+        r = por_cod.get(cod)
+        if r is None:
+            rel['falhas'].append(f'ajuste para {cod}, que não está no PDF do mês')
+            continue
+        if aj.get('frete') == 'linhas':
+            antes, r['frete'] = r['frete'], r['_freteLinhas']
+            rel['ajustes'].append(f'{cod} {r["nome"]}: frete do resumo {antes:,.2f} → soma das linhas '
+                                  f'{r["frete"]:,.2f} ({r["frete"] - antes:+,.2f}) — {aj.get("motivo", "")}')
+
+
 def main():
     if len(sys.argv) != 3 or not re.fullmatch(r'\d{4}-\d{2}', sys.argv[2]):
         sys.exit(__doc__)
@@ -138,7 +157,7 @@ def main():
         b['txt'] += txt[m.end():fim] + '\n'
 
     rel = {'identidade': [], 'frete': [], 'rubricas': [], 'premio': [], 'duplicados': [],
-           'totalPdf': [], 'arred': [], 'eventos': [], 'falhas': [], 'arredLinhas': 0, 'viraRegra': []}
+           'totalPdf': [], 'arred': [], 'eventos': [], 'falhas': [], 'arredLinhas': 0, 'viraRegra': [], 'ajustes': []}
     rows = []
     for cod, b in blocos.items():
         t = b['txt']
@@ -218,9 +237,10 @@ def main():
                          pos=pr['pos'],
                          # usados só na planilha/conferência
                          _vViag=rb['vViag'], _vVira=rb['vVira'], _vCarreg=rb['vCarreg'], _vLona=rb['vLona'],
-                         _premTotPdf=pr['premTotPdf'], _totalPdf=pr['totalPdf'], _nLanc=len(lanc)))
+                         _premTotPdf=pr['premTotPdf'], _totalPdf=pr['totalPdf'], _nLanc=len(lanc), _freteLinhas=sf))
 
     rows.sort(key=lambda r: r['nome'])
+    aplicar_ajustes(rows, mes, rel)
     derivar(rows)
 
     dest = RAIZ / 'dados' / f'{mes}.json'
@@ -244,6 +264,7 @@ def main():
                ('rubricas', 'Rubricas do bônus × lançamentos (mantido o resumo)'),
                ('totalPdf', 'TOTAL impresso × bônus + premiação'),
                ('duplicados', 'Blocos de prêmio duplicados'),
+               ('ajustes', f'Ajustes autorizados aplicados (dados/ajustes/{mes}.json)'),
                ('viraRegra', 'Vira não computada por estar na linha de uma viagem paga (regra do Rodopar)'),
                ('eventos', 'Lançamentos de evento (E:) — incentivo/ajuda'),
                ('arred', 'Arredondamento de R$ 0,01 (planilha usa a soma)')]

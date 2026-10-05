@@ -34,7 +34,10 @@ o mesmo caminho de arquivo mantém a URL.
    divergência real da fonte de efeito do PDF (não traz o bloco de prêmio).
 4. **Conferir contra os lançamentos** — somar as linhas de cada bloco e comparar
    com o resumo. Divergência aqui é achado, não erro de leitura: reportar e
-   **manter o valor do resumo**, que é o oficial do fechamento.
+   **manter o valor do resumo**, que é o oficial do fechamento. Exceção só com
+   autorização do usuário, registrada em `dados/ajustes/AAAA-MM.json`
+   (`{"<cod>": {"frete": "linhas", "motivo": "..."}}`) — o `1_extrair.py` aplica e
+   lista no relatório. Ex.: set/2026, viagens canceladas de 0521 e 0527.
 5. **Montar a planilha** no modelo abaixo e recalcular as fórmulas com LibreOffice
    até não sobrar nenhum erro.
 6. **Atualizar o painel**: `python3 scripts/3_painel.py` lê todo `dados/*.json`;
