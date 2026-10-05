@@ -47,6 +47,12 @@ bônus operacional acompanha as viagens; o bônus por média subiu 28,2%.
    linhas foram lidas — a diferença está na fonte):
    0752 ANANIAS DOS REIS ROSA CANDIDO (+R$ 11.804,52), 0521 FLAVIO CUSTODIO ALVES
    (+R$ 9.121,10) e 0527 ORLEAN FADINI GONÇALVES (+R$ 2.500,00).
+   **Não afeta o pagamento:** o bônus de viagem (1,75%–1,85% do frete de cada
+   linha) e a quantidade de viagens batem exatamente com as linhas nos três; o
+   valor a mais aparece só no `TOTAL DE FRETE CLIENTE`. Afeta a coluna E da
+   planilha e o que deriva dela (% bonificação/frete, frete por viagem e por km,
+   participação, ranking de frete) e soma R$ 23.425,62 no frete da frota (pelas
+   linhas, seria R$ 8.484.572,31).
    Confirmadas no export xlsx (ver abaixo): a diferença está no próprio relatório
    do Rodopar, não é efeito do PDF. Pista para 0752: a diferença é exatamente o
    valor do documento `M: 1-001-077350` de 0765 ADILSON PEREIRA ASSIS (6.015,71 +
