@@ -1,0 +1,145 @@
+# Procedimento — fechamento mensal de produtividade dos motoristas
+
+Empresa: Tóliman Transportes (Grupo Dínamo). Fechamento mensal de bonificação de
+motoristas, saído do Rodopar.
+
+`docs/historico/` guarda o que é específico de cada mês; as regras que valem para
+todos ficam aqui.
+
+## Entradas e saídas
+
+| Arquivo | Papel |
+|---|---|
+| `entrada/Planilha de comissão MM AAAA.pdf` | **Fonte.** ~90 págs., um bloco por motorista. É de onde tudo sai. |
+| `dados/AAAA-MM.json` | Base extraída do mês. Fonte do painel, vai para o git. |
+| `saida/Indicadores_Produtividade_Motoristas_MM_AAAA.xlsx` | **Entregável 1.** Modelo fixo, 25 colunas. |
+| `saida/Dashboard_Produtividade_Motoristas.html` | **Entregável 2.** Painel multimês, um arquivo só (não é um por mês). |
+
+O painel também existe publicado como artefato em
+https://claude.ai/code/artifact/f57fd579-3b88-4aaa-a4ce-8c8ec21542af — republicar
+o mesmo caminho de arquivo mantém a URL.
+
+## Passos
+
+1. **Extrair o texto do PDF** com layout preservado:
+   `pdftotext -layout entrada/<arquivo>.pdf /tmp/mes.txt`
+   Um motorista por bloco, delimitado por `^ MOTORISTA: <nome> - COD.: <cod>`.
+2. **Ler dois resumos por bloco**: `RESUMO DO BÔNUS` (quantidades à esquerda,
+   valores à direita) e `RESUMO PRÊMIO POR MÉDIA` (média, grupo, posição,
+   economia, prêmio, km).
+3. **Conferir contra os lançamentos** — somar as linhas de cada bloco e comparar
+   com o resumo. Divergência aqui é achado, não erro de leitura: reportar e
+   **manter o valor do resumo**, que é o oficial do fechamento.
+4. **Montar a planilha** no modelo abaixo e recalcular as fórmulas com LibreOffice
+   até não sobrar nenhum erro.
+5. **Atualizar o painel** acrescentando o mês em `DATASETS`/`TOTAIS`.
+6. **Registrar** um `docs/historico/AAAA-MM-extracao.md` com os achados do mês.
+
+## Regras de validação (têm que fechar em 100% dos motoristas)
+
+- `Subtotal bônus = viagens + viras + carregamento + lonas`
+- `Total premiação = prêmio por economia + bônus por média`
+- `Total bonificações = bônus operacional + total premiação`
+- `Frete cliente do motorista = soma dos lançamentos do bloco` (exceções viram achado)
+
+## Armadilhas conhecidas do PDF
+
+- **Blocos de prêmio duplicados.** Alguns motoristas trazem dois
+  `RESUMO PRÊMIO POR MÉDIA` — o segundo é sobra de paginação. Regra: vence o de
+  **maior `TOTAL PREMIAÇÃO`**, desempatando por média e km. Em ago/2026 isso
+  reproduziu exatamente os totais que o usuário pediu (Gabriel 0501 e Kauan 0865).
+- **Nomes longos quebram a linha.** O nome do motorista pode ocupar uma linha e
+  os números a seguinte. Casar as colunas pelo **fim da linha** (VG, LONA, VIRA,
+  CARREGAMENTO, LONA, VIAGEM), nunca pelo começo.
+- **Container com espaço no campo CT-e.** Nas linhas de vira (`O:`), o campo CT-e
+  traz um container do tipo `MRSU 306.229-7`, com espaço — um `\S+` no regex
+  desalinha tudo. Foi a causa de vários falsos positivos de conferência.
+- **Incentivo entra como carregamento.** Documentos `E: 1-EVE-…` (R$ 813,49 em
+  ago/2026) caem na rubrica de carregamento e inflam esse total.
+- **Arredondamento de R$ 0,01.** O PDF imprime um `TOTAL` arredondado que difere
+  da soma das próprias parcelas — 4 casos em jul/2026, 23 em ago/2026. **A
+  planilha e o painel sempre usam a soma**, porque as colunas K e L do modelo são
+  fórmulas. Avisar o usuário quando ele citar um total do PDF que cai nesse caso.
+- **Manobristas.** Motoristas sem frete faturado: a coluna R mostra `Manobrista`
+  e os rankings de frete ficam vazios. Continuam no denominador das médias.
+
+## Modelo da planilha
+
+O modelo está em `modelo/`. **Não redesenhar** — replicar. Duas abas:
+
+- **`Base Motorista`** — 25 colunas (A–Y), uma linha por motorista, linha
+  `TOTAL / MEDIA` no fim. Cabeçalho `#1F3864` com texto branco; dados vindos do
+  PDF em **fonte azul** (`#0000FF`); colunas calculadas (S–Y) em preto; colunas
+  L (`Total Bonificações`) e R (`% Bonificação Sobre Total Frete Cliente`) com
+  **fundo verde** `#00B050` e texto branco. Arial 10; linha de total Arial 11
+  negrito, fundo `#D9E1F2`.
+- **`Base Classificação Motorista`** — código do grupo → nome, sem cabeçalho.
+  Alimenta o `VLOOKUP` da coluna D. **Ajustar o intervalo do VLOOKUP** quando
+  entrar grupo novo (foi `$A$1:$B$6` em julho, `$A$1:$B$7` em agosto).
+
+Cabeçalhos, na ordem: Cod. Motorista(Rodopar) · Motorista · Grupo de Maior KM ·
+Descrição Grupo · Total Frete Cliente (R$) · Total Bonus Operacional (R$) ·
+Valor Economia (R$) · Premio por Economia (R$) · % Bonus por Media ·
+Bonus por Media (R$) · Total Premiacao (R$) · Total Bonificações (R$) ·
+Qtd Viagens · Qtd Viagem+Vira · KM Rodado · Media (km/l) · Posicao no Grupo ·
+% Bonificacao Sobre Total Frete Cliente · Frete Medio p/ Viagem (R$) ·
+Bonificacao Media p/ Viagem (R$) · Frete por KM (R$/km) ·
+Bonificacao por KM (R$/km) · Part. % no Frete Total · Ranking Frete ·
+Ranking Bonificacao
+
+Fórmulas por linha (`r` = número da linha):
+
+```
+D: =VLOOKUP(Cr,'Base Classificação Motorista'!$A$1:$B$7,2,FALSE())
+K: =Hr+Jr                          L: =Fr+Kr
+R: =IFERROR(Lr/Er,"Manobrista")    S: =IFERROR(Er/Mr,"")
+T: =IFERROR(Lr/Nr,"")              U: =IFERROR(Er/Or,"")
+V: =IFERROR(Lr/Or,"")              W: =IFERROR(Er/$E$<total>,"")
+X: =IF(Er=0,"",RANK(Er,$E$2:$E$<ult>))
+Y: =IF(Lr=0,"",RANK(Lr,$L$2:$L$<ult>))
+```
+
+Linha de total: `SUM` nas colunas E–O, `AVERAGEIFS(P…,P…,">0")` na média
+(média **simples** entre os que têm consumo, não ponderada por km), e as mesmas
+razões das colunas R–W apontando para a própria linha de total. C, I, Q, X e Y
+ficam vazias.
+
+**Grupos conhecidos:** 17 Scania/Volvo 440 · 18 Volvo Bi-Truck · 20 Volvo/Scania
+480·510·540 · 21 Volvo/Scania Tampa Baixa · 48 Volvo/Scania Caçamba · 49 Meteor VW ·
+50 Volvo/Scania Graneleiro. Manter todos na tabela mesmo sem motoristas no mês.
+
+## Painel
+
+Arquivo único, multimês. `DATASETS` e `TOTAIS` são objetos indexados por mês
+(`"2026-07"`, `"2026-08"`). Para acrescentar um mês: adicionar a chave nos dois
+objetos e o rótulo em `MLABEL`/`MSHORT`. Seletor de mês, aba **Evolução**, KPIs
+comparativos e o histórico do painel individual passam a considerar o mês novo
+sozinhos.
+
+Abas: **Visão geral** (KPIs, composição, grupos, ranking, tabela) · **Por
+motorista** (ficha individual, comparação com a frota, histórico mês a mês) ·
+**Evolução** (frota mês a mês e variação por motorista). Identidade visual
+Dínamo/Tóliman — navy `#1C2543`, coral `#DD4663`, mauve `#AE82B1`, areia `#F4D38D`.
+
+## Gotchas técnicos
+
+- **O xlsx de origem é OOXML *strict*** — `openpyxl` abre com `sheetnames: []`.
+  Converter antes:
+  `soffice --headless --convert-to xlsx:"Calc MS Excel 2007 XML" --outdir conv arquivo.xlsx`
+- **Cor de tema no XML.** No arquivo original, `theme 0` = branco. O openpyxl
+  devolve isso como "sem cor" — conferir no `xl/styles.xml` antes de concluir que
+  uma célula está sem formatação.
+- **Código de motorista `#VALUE!`** (linha sem motorista identificado em julho)
+  vira erro de fórmula se escrito direto numa célula. Substituir por texto.
+- **Média da frota** = média simples dos que têm consumo > 0. Em jul/2026 deu
+  2,1141 (a ponderada por km daria 2,1027) — usar sempre a simples, é o que o
+  modelo calcula.
+- **`openpyxl` não cacheia resultados de fórmula.** Depois de gerar o xlsx,
+  recalcular com LibreOffice; antes disso toda fórmula lê como `None`.
+
+## Ao entregar
+
+Sempre reportar ao usuário, em texto: os achados da fonte do mês, a movimentação
+do quadro (quem entrou, quem saiu) e qualquer diferença entre um número que ele
+citou e o que a planilha calcula. Nunca ajustar um número em silêncio para bater
+com o esperado.

@@ -1,0 +1,5 @@
+entrada/*.pdf
+saida/
+*.txt
+__pycache__/
+CLAUDE.local.md
