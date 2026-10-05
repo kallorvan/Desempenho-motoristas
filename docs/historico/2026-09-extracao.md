@@ -41,8 +41,10 @@ bônus operacional acompanha as viagens; o bônus por média subiu 28,2%.
    mas `PRÊMIO POR ECONOMIA` e `TOTAL PREMIAÇÃO` estão vazios e o `TOTAL` impresso
    é **R$ 2.564,33** — só o bônus operacional. A planilha soma as parcelas
    (K = H+J), então ele aparece com **R$ 445,51** de premiação e **R$ 3.009,84**
-   de total. **Confirmar com o RH se o bônus por média é devido**; se não for, o
-   total do mês cai R$ 445,51 (R$ 279.379,81).
+   de total. **Resposta do usuário:** o PDF está sendo corrigido no Rodopar para
+   trazer os dados certos. **Pendente:** reprocessar setembro quando o PDF novo
+   chegar (`1_extrair.py` → `2_planilha.py` → `3_painel.py`) e conferir o bloco do
+   0720.
 2. **Frete do resumo maior que a soma das linhas** em 3 motoristas (todas as
    linhas foram lidas — a diferença está na fonte):
    0752 ANANIAS DOS REIS ROSA CANDIDO (+R$ 11.804,52), 0521 FLAVIO CUSTODIO ALVES
@@ -61,6 +63,14 @@ bônus operacional acompanha as viagens; o bônus por média subiu 28,2%.
    bate com cinco pares EXPOCACER diferentes de 15–16/09 (inclusive um do próprio
    0521), então não dá para atribuir. A de 0527 (R$ 2.500,00) não corresponde a
    nenhum lançamento do mês.
+   **Explicado pelo usuário:**
+   - 0752: as viagens do doc. `M: 1-001-077350` foram anuladas para ele e passadas
+     para 0765 ADILSON PEREIRA ASSIS (que recebeu o bônus de viagem), mas o frete
+     ficou no total do 0752 porque foi ele quem carregou. Ficou devido a ele
+     **R$ 50,00**, que será pago no fechamento de outubro (ver Pendências).
+   - 0521 e 0527: os valores a mais são de **viagens canceladas** que ficaram no
+     `TOTAL DE FRETE CLIENTE`.
+   Mantido o valor do resumo na planilha e no painel (regra do fechamento).
 3. ~~Vira de 0763~~ — **explicado, não é divergência.** 0763 ALEXSANDRO DONIZETE
    PEREIRA tem R$ 155,00 de vira nas linhas e R$ 100,00 no resumo. Regra informada
    pelo usuário: vira lançada junto com pagamento de viagem não é computada. A vira
@@ -115,3 +125,11 @@ conferido com `scripts/conferir_xlsx.py`. Traz os mesmos lançamentos e o
   não sobrar `#N/A`.
 - `GRUPO VOLVO BI TRUCK` (18) e `GRUPO METEOR VW` (49) ficaram sem motoristas no
   mês; seguem na tabela.
+
+## Pendências para o próximo fechamento
+
+- **Out/2026 — 0752 ANANIAS DOS REIS ROSA CANDIDO:** conferir se entraram os
+  **R$ 50,00** devidos por ter carregado as viagens do doc. `M: 1-001-077350`
+  (set/2026), passadas para o 0765. Reportar se não aparecer.
+- **Set/2026 — 0720 ADILSON DO NASCIMENTO:** reprocessar setembro com o PDF
+  corrigido quando chegar.
