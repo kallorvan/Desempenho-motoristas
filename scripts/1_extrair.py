@@ -68,9 +68,42 @@ def lancamentos(linhas):
             falhas.append(' '.join(x.strip() for x in fis))
             continue
         g = m.groups()
-        res.append(dict(tipo=tipo, doc=doc, frete=br(g[0]), vg=int(g[3]), lonaq=int(g[4]),
-                        vira=br(g[5]), carreg=br(g[6]), lona=br(g[7]), viagem=br(g[8])))
+        lanc = dict(tipo=tipo, doc=doc, frete=br(g[0]), cte=g[1], rv=g[2] or '', vg=int(g[3]), lonaq=int(g[4]),
+                    vira=br(g[5]), carreg=br(g[6]), lona=br(g[7]), viagem=br(g[8]))
+        lanc.update(cabecalho_lanc(fis, m))
+        res.append(lanc)
     return res, falhas
+
+
+RE_DATA = re.compile(r'\d{2}/\d{2}/\d{2}')
+RE_CONTAINER = re.compile(r'^([A-Z]{4} [\d.]+-\d)\s+(.*)$')
+
+
+def cabecalho_lanc(fis, m):
+    """Colunas de texto do lançamento (data, chegada, container, cliente, origem/destino),
+    tiradas do que sobra das linhas físicas sem o bloco numérico do fim."""
+    partes = []
+    for ln in fis:
+        if m.string is ln:
+            ln = ln[:m.start()]
+        partes.append(ln.strip())
+    # as duas primeiras datas são DATA e DT.CHEGADA; nome longo pode colar na 1ª data
+    # e continuar entre as duas, então o que vem antes da 2ª data é descartado
+    txt = ' '.join(p for p in partes if p)
+    datas = list(RE_DATA.finditer(txt))
+    if len(datas) < 2:
+        return dict(data='', chegada='', container='', cliente='', od='')
+    resto = txt[datas[1].end():].strip()
+    cont = ''
+    mc = RE_CONTAINER.match(resto)
+    if mc:
+        cont, resto = mc.groups()
+    pedacos = re.split(r'\s{2,}', resto)
+    od = ' '.join(x.strip() for x in pedacos[1:])
+    if re.fullmatch(r'/\s*x\s*/', od):  # eventos (E:) não têm origem/destino
+        od = ''
+    return dict(data=datas[0].group(), chegada=datas[1].group(), container=cont,
+                cliente=pedacos[0].strip(), od=od)
 
 
 def campo(txt, rotulo, padrao=NUM):
@@ -141,6 +174,29 @@ def aplicar_ajustes(rows, mes, rel):
                                   f'{r["frete"]:,.2f} ({r["frete"] - antes:+,.2f}) — {aj.get("motivo", "")}')
 
 
+CAMPOS_LANC = ['tipo', 'doc', 'data', 'chegada', 'container', 'cliente', 'od', 'frete', 'cte', 'rv',
+               'vg', 'lonaq', 'vira', 'carreg', 'lona', 'viagem']
+
+
+def gravar_lancamentos(mes, txt, movs):
+    """dados/lancamentos/AAAA-MM.json: todas as movimentações do PDF, por motorista,
+    com o período do fechamento. Base do detalhe no painel e das verificações."""
+    per = {}
+    for chave, rot in (('viagens', 'FECHAMENTO DE VIAGENS'), ('media', 'FECHAMENTO DE MÉDIA')):
+        m = re.search(rot + r':\s*(\d{2}/\d{2}/\d{4})[^-]*-\s*(\d{2}/\d{2}/\d{4})', txt)
+        if m:
+            per[chave] = list(m.groups())
+    dest = RAIZ / 'dados' / 'lancamentos' / f'{mes}.json'
+    dest.parent.mkdir(exist_ok=True)
+    corpo = {'periodo': per, 'campos': CAMPOS_LANC,
+             'motoristas': {cod: [[x[k] for k in CAMPOS_LANC] for x in ls] for cod, ls in movs.items()}}
+    # uma linha por lançamento: legível no diff do git e compacto
+    linhas = [f'  {json.dumps(cod)}: [\n' + ',\n'.join('   ' + json.dumps(r, ensure_ascii=False) for r in ls) + '\n  ]'
+              for cod, ls in corpo['motoristas'].items()]
+    dest.write_text('{\n "periodo": ' + json.dumps(per) + ',\n "campos": ' + json.dumps(CAMPOS_LANC) +
+                    ',\n "motoristas": {\n' + ',\n'.join(linhas) + '\n }\n}\n', encoding='utf8')
+
+
 def main():
     if len(sys.argv) != 3 or not re.fullmatch(r'\d{4}-\d{2}', sys.argv[2]):
         sys.exit(__doc__)
@@ -156,12 +212,14 @@ def main():
         b = blocos.setdefault(cod, {'nome': nome, 'txt': ''})
         b['txt'] += txt[m.end():fim] + '\n'
 
+    movs = {}  # cod -> lançamentos, na ordem do PDF
     rel = {'identidade': [], 'frete': [], 'rubricas': [], 'premio': [], 'duplicados': [],
            'totalPdf': [], 'arred': [], 'eventos': [], 'falhas': [], 'arredLinhas': 0, 'viraRegra': [], 'ajustes': []}
     rows = []
     for cod, b in blocos.items():
         t = b['txt']
         lanc, falhas = lancamentos(t.split('\n'))
+        movs[cod] = lanc
         for f in falhas:
             rel['falhas'].append(f'{cod} {b["nome"]}: linha não lida: {f[:140]}')
         rb = resumo_bonus(t)
@@ -246,6 +304,7 @@ def main():
     dest = RAIZ / 'dados' / f'{mes}.json'
     publico = [{k: v for k, v in r.items() if not k.startswith('_')} for r in rows]
     dest.write_text(json.dumps(publico, ensure_ascii=False, indent=1) + '\n', encoding='utf8')
+    gravar_lancamentos(mes, txt, movs)
     (RAIZ / 'saida').mkdir(exist_ok=True)
     (RAIZ / 'saida' / f'conferencia_{mes}.json').write_text(
         json.dumps({'rows': rows, 'relatorio': rel}, ensure_ascii=False, indent=1), encoding='utf8')

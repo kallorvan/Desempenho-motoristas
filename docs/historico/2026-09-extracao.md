@@ -130,6 +130,25 @@ conferido com `scripts/conferir_xlsx.py`. Traz os mesmos lançamentos e o
   arredondamento do `TOTAL` dependem do bloco de prêmio, que só existe no PDF.
 - Nenhum número da planilha ou do painel mudou com o confronto.
 
+## Verificações das movimentações (regras iniciais — a validar com o usuário)
+
+`python3 scripts/regras.py 2026-09` sobre as 1.556 movimentações:
+
+- **CT-e com frete em mais de um lançamento — 20 CT-e, 40 lançamentos, 21 motoristas.**
+  Cada lançamento gerou bônus de viagem. Casos no mesmo motorista: 0757 (CT-e
+  05-1-018855, docs 5-001-036314 e 5-001-036477, R$ 6.750,00 cada) e 0763 (CT-e
+  03-1-021407, docs 3-001-021679 e 1-001-077860, R$ 7.394,10 cada). Os demais são
+  pares entre motoristas (ex.: 0228 × 0245, 0419 × 0521, 0135 × 0615). Possível frete
+  e bônus contados em dobro — conferir.
+- **Nº RV "FERIAS" — 5 lançamentos:** 0228 EDUARDO JOSE DA SILVA (2 linhas, frete
+  R$ 13.092,02, bônus R$ 229,11) e 0629 FLAVIANO APARECIDO DE LIMA (3 linhas).
+- **Bônus de viagem fora das taxas usuais (1,75 / 1,85 / 2,05%):** 0765, doc.
+  1-001-077226, 2,16%.
+- **Valor de lona fora do padrão (R$ 30 / R$ 35):** 0642 (R$ 15,00 por 1 lona),
+  0659 (R$ 30,00 por 2) e 0763 (R$ 35,00 por 2).
+- Informativos: 25 lançamentos com Nº RV "PEND.", 9 eventos, 41 lançamentos sem
+  valor, 1 vira não computada (0763).
+
 ## Motoristas abaixo de 4.000 km (fora do critério)
 
 Informado pelo usuário: os lançamentos com frete e sem média (0923, 0606, 0922 —

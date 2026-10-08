@@ -10,6 +10,7 @@ multimês.
 |---|---|
 | `python3 scripts/1_extrair.py entrada/<arquivo>.pdf AAAA-MM` | Lê o PDF, confere lançamentos × resumos, grava `dados/AAAA-MM.json` e imprime o relatório de conferência (detalhe em `saida/conferencia_AAAA-MM.json`) |
 | `python3 scripts/2_planilha.py AAAA-MM` | Gera `saida/Indicadores_Produtividade_Motoristas_MM_AAAA.xlsx` já recalculado pelo LibreOffice e conferido sem erros |
+| `python3 scripts/regras.py AAAA-MM` | Roda as regras de verificação sobre as movimentações do mês (`dados/lancamentos/AAAA-MM.json`) e lista as ocorrências |
 | `python3 scripts/3_painel.py` | Lê todo `dados/*.json` e gera `saida/Dashboard_Produtividade_Motoristas.html` |
 | `soffice --headless --convert-to xlsx --outdir /tmp <arq>.xlsx` | Recalcula as fórmulas do xlsx (LibreOffice precisa estar instalado) |
 
@@ -25,7 +26,8 @@ pip install openpyxl
 
 ```
 entrada/   # o PDF do mês entra aqui
-dados/     # uma base por mês, AAAA-MM.json — é a fonte do painel
+dados/     # uma base por mês, AAAA-MM.json — é a fonte do painel;
+           # lancamentos/AAAA-MM.json = todas as movimentações do PDF; ajustes/ = exceções autorizadas
 saida/     # planilha e painel gerados
 painel/    # base.html (casca) + app.js (lógica) — o 3_painel.py junta os dois
 modelo/    # xlsx de referência; o layout da planilha vem daqui
