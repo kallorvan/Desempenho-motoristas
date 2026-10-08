@@ -143,9 +143,11 @@ conferido com `scripts/conferir_xlsx.py`. Traz os mesmos lançamentos e o
 - **Nº RV "FERIAS" — 5 lançamentos:** 0228 EDUARDO JOSE DA SILVA (2 linhas, frete
   R$ 13.092,02, bônus R$ 229,11) e 0629 FLAVIANO APARECIDO DE LIMA (3 linhas).
 - **Apuração de pagamento indevido de viagem — 11 motoristas, 15 lançamentos:**
-  bônus de viagem pago R$ 1.488,56, carregamento devido R$ 350,00 (R$ 25,00 × 14),
-  **a recuperar R$ 1.138,56**; 12 viagens contadas a mais (VG). Inclui a ordem
-  cancelada paga do 0757 DENILSON (CT-e 05-1-018855, doc. 5-001-036477, R$ 138,38): o
+  valor pago R$ 1.548,56, carregamento devido R$ 350,00 (R$ 25,00 × 14),
+  **a recuperar R$ 1.198,56**; 12 viagens contadas a mais (VG). Inclui a ordem
+  cancelada paga do 0757 DENILSON (CT-e 05-1-018855, doc. 5-001-036477, R$ 198,38 =
+  viagem R$ 138,38 + lona R$ 60,00 — o usuário definiu em out/2026 que a linha
+  cancelada estorna tudo o que entrou para pagamento; antes contava só a viagem): o
   usuário informou que a ordem cancelada não entra na contagem nem no pagamento; a
   contagem confere (VG 0), mas o PDF mostra o bônus pago nas duas ordens e o resumo do
   0757 (R$ 1.819,39) soma as duas.
@@ -204,8 +206,8 @@ mês ter sido pago com a versão anterior. O fechamento (planilha, painel, apura
 - Viagens retiradas/convertidas em carregamento: 0923, 0251, 0606, 0922 (rotas de
   carregamento, já na apuração) e 0135, 0337 (CT-e duplicados de Confrontos).
   0757: retirada a ordem duplicada do CT-e 05-1-018855 (bônus + lona, −R$ 198,38).
-- **Apuração de pagamento indevido × versão 2:** dos R$ 1.138,56 apurados, a versão 2
-  recupera R$ 571,07. Seguem **não corrigidos** os 7 lançamentos de
+- **Apuração de pagamento indevido × versão 2:** dos R$ 1.198,56 apurados, a versão 2
+  recupera R$ 571,07 (no 0757 bate exatamente: R$ 198,38). Seguem **não corrigidos** os 7 lançamentos de
   Machado x Varginha (0720, 0765, 0304 ×2, 0900, 0039, 0554 — R$ 552,49 a recuperar).
   Onde corrigiu, a versão 2 lança carregamento de R$ 50,00 em alguns casos (0606,
   0922) em vez dos R$ 25,00 da apuração.

@@ -38,9 +38,10 @@ REGRAS = [
          descricao='Rotas ' + ', '.join(f'{a.title()} x {b.title()}' for a, b in ROTAS_CARREGAMENTO) +
                    ' (nos dois sentidos) são carregamento e não podem ter valor de viagem.'),
     dict(id='ORDEM_CANCELADA_PAGA', curto='Ordem cancelada paga', nivel='alerta',
-         titulo='Ordem cancelada com bônus de viagem pago',
+         titulo='Ordem cancelada com valor pago',
          descricao='Mesmo CT-e, mesmo trecho e mesmo motorista: uma das ordens foi cancelada (VG 0) e não '
-                   'deveria entrar no pagamento, mas tem bônus de viagem.'),
+                   'deveria entrar no pagamento, mas tem valor que entrou para pagamento (viagem, lona, vira '
+                   'ou carregamento). Tudo o que foi pago na linha deve ser estornado.'),
     dict(id='ORDEM_CANCELADA', curto='Ordem cancelada', nivel='info',
          titulo='Ordem cancelada (mesmo CT-e, trecho e motorista)',
          descricao='Uma das ordens do mesmo CT-e, trecho e motorista foi cancelada e ficou fora da contagem '
@@ -82,6 +83,46 @@ def carregar(mes):
     campos = d['campos']
     movs = {cod: [dict(zip(campos, r)) for r in ls] for cod, ls in d['motoristas'].items()}
     return d, movs
+
+
+RUBRICAS = (('viagem', 'viagem'), ('lona', 'lona'), ('vira', 'vira'), ('carreg', 'carregamento'))
+
+
+def conferencia_rubricas(d, movs):
+    """{cod: {rubrica: True/False}}: a rubrica entrou inteira para pagamento, isto é, o RESUMO
+    DO BÔNUS do motorista traz pelo menos a soma das linhas (tolerância de R$ 0,05 do
+    arredondamento por linha; vira na linha de uma viagem não conta — regra do Rodopar).
+    Vazio quando o arquivo de lançamentos não tem os resumos (gerado antes de out/2026)."""
+    res = d.get('resumos') or {}
+    out = {}
+    for cod, rb in res.items():
+        ls = movs.get(cod, [])
+        out[cod] = {}
+        for k, _ in RUBRICAS:
+            soma = sum(x[k] for x in ls if not (k == 'vira' and x['viagem']))
+            out[cod][k] = rb[k] + 0.05 >= soma
+    return out
+
+
+def pago_linha(x, conf=None):
+    """O que a linha teve de pagamento: ({rubrica: valor} que entrou para pagamento,
+    [rubricas com valor na linha que não dá para confirmar no resumo])."""
+    pago, sem = {}, []
+    for k, _ in RUBRICAS:
+        v = x[k]
+        if not v or (k == 'vira' and x['viagem']):  # vira na linha de viagem não é computada
+            continue
+        if conf is not None and not conf.get(k, True):
+            sem.append(k)
+            continue
+        pago[k] = round(v, 2)
+    return pago, sem
+
+
+def compor(pago):
+    """{'viagem': 138.38, 'lona': 60.0} -> 'viagem R$ 138,38 + lona R$ 60,00'"""
+    nomes = dict(RUBRICAS)
+    return ' + '.join(f'{nomes[k]} R$ {brl(v)}' for k, v in pago.items())
 
 
 def cidades(od):
@@ -128,6 +169,7 @@ def verificar(mes):
 
     # índice por CT-e para a regra de duplicidade
     por_cte = indice_cte(movs)
+    conf = conferencia_rubricas(d, movs)
 
     per = d.get('periodo', {}).get('viagens')
     if per:
@@ -141,9 +183,11 @@ def verificar(mes):
                     f'{c} doc. {o["doc"]} (frete R$ {brl(o["frete"])}, bônus R$ {brl(o["viagem"])})' for c, _, o in outros))
             for c2, i2, o in outros:
                 if c2 == cod and o['od'] == x['od'] and not x['vg'] and o['vg']:
-                    if x['viagem'] > 0:
+                    pago, sem = pago_linha(x, conf.get(cod))
+                    if pago:
                         marca(cod, i, 'ORDEM_CANCELADA_PAGA', f'ordem cancelada (doc. {o["doc"]} é a ordem válida) '
-                                                              f'com bônus de viagem R$ {brl(x["viagem"])} pago')
+                                                              f'com {compor(pago)} pago — estornar R$ {brl(sum(pago.values()))}'
+                              + (f'; não confirmado no resumo: {", ".join(sem)}' if sem else ''))
                     else:
                         marca(cod, i, 'ORDEM_CANCELADA', f'ordem cancelada; válida: doc. {o["doc"]}')
                     break
@@ -183,27 +227,35 @@ def verificar(mes):
 
 def apuracao(mes, oc=None):
     """Pagamento indevido de viagem, por motorista: bônus de viagem em rota de carregamento
-    (devido só o carregamento, VALOR_CARREGAMENTO por lançamento) e bônus de ordem cancelada
-    (nada devido). Devolve {'itens': [...], 'motoristas': [...], 'total': {...}}."""
+    (devido só o carregamento, VALOR_CARREGAMENTO por lançamento) e ordem cancelada (nada
+    devido: estorna viagem, lona, vira e carregamento da linha que entraram para pagamento). Devolve {'itens': [...], 'motoristas': [...], 'total': {...}}."""
     carga = carregar(mes)
     if carga is None:
         return None
-    _, movs = carga
+    d, movs = carga
     oc = verificar(mes) if oc is None else oc
+    conf = conferencia_rubricas(d, movs)
     itens = []
     for cod, por_i in oc.items():
         for i, marcas in por_i.items():
             ids = {m[0] for m in marcas}
             x = movs[cod][int(i)]
-            if 'ROTA_CARREGAMENTO' in ids:
-                motivo, devido = 'Viagem em rota de carregamento', VALOR_CARREGAMENTO
-            elif 'ORDEM_CANCELADA_PAGA' in ids:
+            sem = []
+            if 'ORDEM_CANCELADA_PAGA' in ids:
+                # ordem cancelada: estorna tudo o que a linha teve de pagamento (viagem, lona,
+                # vira, carregamento), desde que tenha entrado para pagamento no resumo
                 motivo, devido = 'Ordem cancelada paga', 0.0
+                pago, sem = pago_linha(x, conf.get(cod))
+            elif 'ROTA_CARREGAMENTO' in ids:
+                motivo, devido = 'Viagem em rota de carregamento', VALOR_CARREGAMENTO
+                pago = {'viagem': round(x['viagem'], 2)}
             else:
                 continue
+            total = round(sum(pago.values()), 2)
             itens.append({'cod': cod, 'i': int(i), 'motivo': motivo, 'doc': x['doc'], 'data': x['data'],
-                          'od': x['od'], 'cte': x['cte'], 'container': x['container'], 'vg': x['vg'], 'pago': round(x['viagem'], 2),
-                          'devido': devido, 'recuperar': round(x['viagem'] - devido, 2)})
+                          'od': x['od'], 'cte': x['cte'], 'container': x['container'], 'vg': x['vg'], 'pago': total,
+                          'comp': pago, 'composicao': compor(pago), 'semConf': sem,
+                          'devido': devido, 'recuperar': round(total - devido, 2)})
     por = defaultdict(lambda: {'lanc': 0, 'pago': 0.0, 'devido': 0.0, 'recuperar': 0.0, 'vg': 0, 'motivos': set()})
     for it in itens:
         m = por[it['cod']]
@@ -245,6 +297,9 @@ def main():
     for m in ap['motoristas']:
         print(f'   {m["cod"]} {nomes.get(m["cod"], "")[:30]:30} {m["lanc"]} lanç. · pago R$ {brl(m["pago"]):>8} · '
               f'devido R$ {brl(m["devido"]):>6} · a recuperar R$ {brl(m["recuperar"]):>8} · VG {m["vg"]} · {", ".join(m["motivos"])}')
+        for it in (i for i in ap['itens'] if i['cod'] == m['cod'] and (len(i['comp']) > 1 or i['semConf'])):
+            print(f'      {it["doc"]}: {it["composicao"]}' +
+                  (f' · não confirmado no resumo: {", ".join(it["semConf"])}' if it['semConf'] else ''))
     t = ap['total']
     print(f'   TOTAL: {t["motoristas"]} motoristas, {t["lanc"]} lançamentos · pago R$ {brl(t["pago"])} · '
           f'devido R$ {brl(t["devido"])} · a recuperar R$ {brl(t["recuperar"])} · VG {t["vg"]}\n')
