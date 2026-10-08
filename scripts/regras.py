@@ -202,7 +202,7 @@ def apuracao(mes, oc=None):
             else:
                 continue
             itens.append({'cod': cod, 'i': int(i), 'motivo': motivo, 'doc': x['doc'], 'data': x['data'],
-                          'od': x['od'], 'cte': x['cte'], 'vg': x['vg'], 'pago': round(x['viagem'], 2),
+                          'od': x['od'], 'cte': x['cte'], 'container': x['container'], 'vg': x['vg'], 'pago': round(x['viagem'], 2),
                           'devido': devido, 'recuperar': round(x['viagem'] - devido, 2)})
     por = defaultdict(lambda: {'lanc': 0, 'pago': 0.0, 'devido': 0.0, 'recuperar': 0.0, 'vg': 0, 'motivos': set()})
     for it in itens:

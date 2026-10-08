@@ -574,28 +574,28 @@ function relatorioVerificacoes(meses, comInfo){
   if(cf.length===1) cf.push(['', '', 'Nenhum CT-e com frete em mais de um lançamento no período.']);
 
   /* Pagamento indevido: por motorista e o detalhe por lançamento */
-  const pi = [['Mês','Cód.','Motorista','Motivo','Documento','Data','Origem / Destino','CT-e','VG','Bônus pago','Carregamento devido','A recuperar']];
+  const pi = [['Mês','Cód.','Motorista','Motivo','Documento','Data','Origem / Destino','CT-e','Container','VG','Bônus pago','Carregamento devido','A recuperar']];
   const piTot = {pago:0, devido:0, recuperar:0, lanc:0, vg:0, mot:new Set()};
   for(const m of meses){
     const A = LANC[m].apur; if(!A) continue;
     const nome = Object.fromEntries(DATASETS[m].map(d=>[d.cod,d.nome]));
     for(const mo of A.motoristas){
       for(const it of A.itens.filter(i=>i.cod===mo.cod)){
-        pi.push([mshort(m), it.cod, nome[it.cod]||'', it.motivo, it.doc, it.data, it.od, it.cte, {v:it.vg,s:7}, it.pago, it.devido, it.recuperar]);
+        pi.push([mshort(m), it.cod, nome[it.cod]||'', it.motivo, it.doc, it.data, it.od, it.cte, it.container||'', {v:it.vg,s:7}, it.pago, it.devido, it.recuperar]);
       }
-      pi.push([{v:mshort(m),s:6}, {v:mo.cod,s:6}, {v:`Subtotal ${nome[mo.cod]||mo.cod}`,s:6}, '', '', '', '', '', {v:mo.vg,s:7}, mo.pago, mo.devido, mo.recuperar]);
+      pi.push([{v:mshort(m),s:6}, {v:mo.cod,s:6}, {v:`Subtotal ${nome[mo.cod]||mo.cod}`,s:6}, '', '', '', '', '', '', {v:mo.vg,s:7}, mo.pago, mo.devido, mo.recuperar]);
       piTot.pago+=mo.pago; piTot.devido+=mo.devido; piTot.recuperar+=mo.recuperar; piTot.lanc+=mo.lanc; piTot.vg+=mo.vg; piTot.mot.add(m+'|'+mo.cod);
     }
   }
   if(pi.length===1) pi.push(['', '', 'Nenhum pagamento indevido de viagem no período.']);
-  else pi.push([], [{v:'TOTAL',s:3}, '', `${piTot.mot.size} motorista(s) · ${piTot.lanc} lançamento(s)`, '', '', '', '', '', {v:piTot.vg,s:7},
+  else pi.push([], [{v:'TOTAL',s:3}, '', `${piTot.mot.size} motorista(s) · ${piTot.lanc} lançamento(s)`, '', '', '', '', '', '', {v:piTot.vg,s:7},
     Math.round(piTot.pago*100)/100, Math.round(piTot.devido*100)/100, Math.round(piTot.recuperar*100)/100],
     [{v:`Carregamento devido: R$ ${brl(LANC[meses[0]].apur ? LANC[meses[0]].apur.valorCarregamento : 25)} por lançamento em rota de carregamento; ordem cancelada: nada devido.`, s:6}]);
 
   return XLSX_MIN.build([
     {name:'Resumo', rows:resumo, header:4, widths:[13,44,90,...(meses.length>1?meses.map(()=>9):[]),13,12]},
     {name:'Ocorrências', rows:ocRows, header:0, widths:[8,12,34,70,7,34,30,6,16,10,10,16,30,34,12,15,10,5,9,9,13,10,10]},
-    {name:'Pagamento indevido', rows:pi, header:0, widths:[8,7,34,30,16,10,34,15,5,13,19,13]},
+    {name:'Pagamento indevido', rows:pi, header:0, widths:[8,7,34,30,16,10,34,15,16,5,13,19,13]},
     {name:'Confronto CT-e', rows:cf, header:0, widths:[8,14,62,34, ...Array.from({length:nMax},()=>[7,32,15,10,10,15,32,12,10,5,12]).flat()]},
     {name:'Frete x lançamentos', rows:fr, header:0, widths:[8,7,36,18,20,13,46]}
   ]);
@@ -737,7 +737,8 @@ function renderIndevido(){
   const A = L.apur, T0 = A.total, nome = Object.fromEntries(DATA.map(d=>[d.cod,d.nome]));
   note.textContent = `viagem paga em rota de carregamento (devido R$ ${brl(A.valorCarregamento)} de carregamento por lançamento) e ordem cancelada paga`;
   if(!A.motoristas.length){ box.innerHTML = `<div class="pad" style="color:var(--muted);font-size:12.5px">Nenhum pagamento indevido de viagem em ${mlab(MES)}.</div>`; return; }
-  const det = cod => A.itens.filter(i=>i.cod===cod).map(i=>`<span>${esc(i.doc)} · ${i.data} · ${esc(i.od)} · R$ ${brl(i.pago)}</span>`).join('');
+  const det = cod => A.itens.filter(i=>i.cod===cod).map(i=>`<span>${esc(i.doc)} · ${i.data} · ${esc(i.od)} · R$ ${brl(i.pago)}</span>`
+    + `<span class="ids">CT-e <b>${esc(i.cte)}</b> · Container <b>${esc(i.container||'—')}</b></span>`).join('');
   box.innerHTML = `<div class="ind-kpi">
       <div><div class="lab">Motoristas</div><div class="val num">${T0.motoristas}</div></div>
       <div><div class="lab">Lançamentos</div><div class="val num">${T0.lanc}</div></div>

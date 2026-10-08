@@ -74,7 +74,8 @@ estão no topo do arquivo.
   bônus de viagem em rota de carregamento (devido só o carregamento,
   `VALOR_CARREGAMENTO` = R$ 25,00 por lançamento, definido pelo usuário) e bônus de
   ordem cancelada (nada devido). Mostra pago, devido, a recuperar e viagens contadas a
-  mais (VG). No painel: bloco "Pagamento indevido de viagem" na Visão geral; no
+  mais (VG), com documento, data, trecho, CT-e e container de cada lançamento.
+  No painel: bloco "Pagamento indevido de viagem" na Visão geral; no
   relatório .xlsx: aba *Pagamento indevido*; na linha de comando: topo do relatório
   do `regras.py`. No painel: tabela de movimentações na ficha do motorista, com as
 ocorrências logo abaixo de cada linha, e o resumo "Verificações das movimentações"
