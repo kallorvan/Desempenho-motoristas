@@ -573,9 +573,29 @@ function relatorioVerificacoes(meses, comInfo){
   }
   if(cf.length===1) cf.push(['', '', 'Nenhum CT-e com frete em mais de um lançamento no período.']);
 
+  /* Pagamento indevido: por motorista e o detalhe por lançamento */
+  const pi = [['Mês','Cód.','Motorista','Motivo','Documento','Data','Origem / Destino','CT-e','VG','Bônus pago','Carregamento devido','A recuperar']];
+  const piTot = {pago:0, devido:0, recuperar:0, lanc:0, vg:0, mot:new Set()};
+  for(const m of meses){
+    const A = LANC[m].apur; if(!A) continue;
+    const nome = Object.fromEntries(DATASETS[m].map(d=>[d.cod,d.nome]));
+    for(const mo of A.motoristas){
+      for(const it of A.itens.filter(i=>i.cod===mo.cod)){
+        pi.push([mshort(m), it.cod, nome[it.cod]||'', it.motivo, it.doc, it.data, it.od, it.cte, {v:it.vg,s:7}, it.pago, it.devido, it.recuperar]);
+      }
+      pi.push([{v:mshort(m),s:6}, {v:mo.cod,s:6}, {v:`Subtotal ${nome[mo.cod]||mo.cod}`,s:6}, '', '', '', '', '', {v:mo.vg,s:7}, mo.pago, mo.devido, mo.recuperar]);
+      piTot.pago+=mo.pago; piTot.devido+=mo.devido; piTot.recuperar+=mo.recuperar; piTot.lanc+=mo.lanc; piTot.vg+=mo.vg; piTot.mot.add(m+'|'+mo.cod);
+    }
+  }
+  if(pi.length===1) pi.push(['', '', 'Nenhum pagamento indevido de viagem no período.']);
+  else pi.push([], [{v:'TOTAL',s:3}, '', `${piTot.mot.size} motorista(s) · ${piTot.lanc} lançamento(s)`, '', '', '', '', '', {v:piTot.vg,s:7},
+    Math.round(piTot.pago*100)/100, Math.round(piTot.devido*100)/100, Math.round(piTot.recuperar*100)/100],
+    [{v:`Carregamento devido: R$ ${brl(LANC[meses[0]].apur ? LANC[meses[0]].apur.valorCarregamento : 25)} por lançamento em rota de carregamento; ordem cancelada: nada devido.`, s:6}]);
+
   return XLSX_MIN.build([
     {name:'Resumo', rows:resumo, header:4, widths:[13,44,90,...(meses.length>1?meses.map(()=>9):[]),13,12]},
     {name:'Ocorrências', rows:ocRows, header:0, widths:[8,12,34,70,7,34,30,6,16,10,10,16,30,34,12,15,10,5,9,9,13,10,10]},
+    {name:'Pagamento indevido', rows:pi, header:0, widths:[8,7,34,30,16,10,34,15,5,13,19,13]},
     {name:'Confronto CT-e', rows:cf, header:0, widths:[8,14,62,34, ...Array.from({length:nMax},()=>[7,32,15,10,10,15,32,12,10,5,12]).flat()]},
     {name:'Frete x lançamentos', rows:fr, header:0, widths:[8,7,36,18,20,13,46]}
   ]);
@@ -708,6 +728,37 @@ document.getElementById('cf-q').addEventListener('input',renderConfrontos);
 document.getElementById('cf-f').addEventListener('change',renderConfrontos);
 document.getElementById('cf-list').addEventListener('click',e=>{
   const b = e.target.closest('button[data-cod]'); if(b) openDriver(b.dataset.cod);
+});
+
+/* pagamento indevido de viagem (rota de carregamento e ordem cancelada paga) */
+function renderIndevido(){
+  const L = LANC[MES], box = document.getElementById('indevido'), note = document.getElementById('ind-note');
+  if(!L || !L.apur){ note.textContent=''; box.innerHTML = `<div class="pad" style="color:var(--muted);font-size:12.5px">Movimentações detalhadas não disponíveis para ${mlab(MES)}.</div>`; return; }
+  const A = L.apur, T0 = A.total, nome = Object.fromEntries(DATA.map(d=>[d.cod,d.nome]));
+  note.textContent = `viagem paga em rota de carregamento (devido R$ ${brl(A.valorCarregamento)} de carregamento por lançamento) e ordem cancelada paga`;
+  if(!A.motoristas.length){ box.innerHTML = `<div class="pad" style="color:var(--muted);font-size:12.5px">Nenhum pagamento indevido de viagem em ${mlab(MES)}.</div>`; return; }
+  const det = cod => A.itens.filter(i=>i.cod===cod).map(i=>`<span>${esc(i.doc)} · ${i.data} · ${esc(i.od)} · R$ ${brl(i.pago)}</span>`).join('');
+  box.innerHTML = `<div class="ind-kpi">
+      <div><div class="lab">Motoristas</div><div class="val num">${T0.motoristas}</div></div>
+      <div><div class="lab">Lançamentos</div><div class="val num">${T0.lanc}</div></div>
+      <div><div class="lab">Bônus de viagem pago</div><div class="val num">R$ ${brl(T0.pago)}</div></div>
+      <div><div class="lab">Carregamento devido</div><div class="val num">R$ ${brl(T0.devido)}</div></div>
+      <div><div class="lab">A recuperar</div><div class="val num rec">R$ ${brl(T0.recuperar)}</div></div>
+      <div><div class="lab">Viagens contadas a mais</div><div class="val num">${T0.vg}</div></div>
+    </div>
+    <div style="overflow-x:auto"><table class="ind-t">
+      <thead><tr><th>Motorista</th><th>Motivo</th><th>Lanç.</th><th>Bônus pago</th><th>Carregamento devido</th><th>A recuperar</th><th>VG</th></tr></thead>
+      <tbody>${A.motoristas.map(m=>`<tr data-cod="${m.cod}">
+        <td><span class="nm">${esc(nome[m.cod]||m.cod)}</span> <span class="gtag num">${m.cod}</span><span class="det num">${det(m.cod)}</span></td>
+        <td>${m.motivos.join(' · ')}</td><td class="num">${m.lanc}</td><td class="num">R$ ${brl(m.pago)}</td>
+        <td class="num">R$ ${brl(m.devido)}</td><td class="num rec">R$ ${brl(m.recuperar)}</td><td class="num">${m.vg}</td></tr>`).join('')}</tbody>
+      <tfoot><tr><td colspan="2">Total · ${T0.motoristas} motoristas</td><td class="num">${T0.lanc}</td><td class="num">R$ ${brl(T0.pago)}</td>
+        <td class="num">R$ ${brl(T0.devido)}</td><td class="num">R$ ${brl(T0.recuperar)}</td><td class="num">${T0.vg}</td></tr></tfoot>
+    </table></div>`;
+}
+document.getElementById('indevido').addEventListener('click',e=>{
+  const tr = e.target.closest('tr[data-cod]'); if(!tr) return;
+  openDriver(tr.dataset.cod); setTimeout(()=>document.getElementById('d-mov-sec').scrollIntoView({behavior:'smooth'}),50);
 });
 
 /* resumo das verificações do mês (visão geral) */
@@ -958,7 +1009,7 @@ function renderMes(keepCod){
   ATIVOS = DATA.filter(d=>isAvaliado(d) && !isManobrista(d));
   calcRanks();
   document.getElementById('per-lab').innerHTML = `${mlab(MES)} · <strong>${DATA.length} motoristas</strong>`;
-  renderKPIs(); renderComposicao(); renderGrupos(); renderFora(); renderVerif(); renderRelControles(); renderRank(); renderTable(); renderConfrontos();
+  renderKPIs(); renderComposicao(); renderGrupos(); renderFora(); renderIndevido(); renderVerif(); renderRelControles(); renderRank(); renderTable(); renderConfrontos();
   renderIndividual(keepCod);
 }
 renderMes();

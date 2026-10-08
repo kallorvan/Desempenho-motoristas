@@ -256,6 +256,23 @@ footer{margin-top:34px;font-size:11px;color:var(--muted);line-height:1.6;border-
 .tagx.fora{background:rgba(244,211,141,.45);color:#6B4E0E}
 .tagx.alerta{background:rgba(221,70,99,.13);color:#B3243F}
 .rel-tools{gap:10px}
+/* pagamento indevido */
+.ind-kpi{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:1px;background:var(--line);border-bottom:1px solid var(--line)}
+.ind-kpi div{background:var(--card);padding:13px 16px}
+.ind-kpi .lab{font-size:10px;letter-spacing:.11em;text-transform:uppercase;color:var(--muted);font-weight:600;margin-bottom:5px}
+.ind-kpi .val{font-size:19px;font-weight:600}
+.ind-kpi .val.rec{color:#B3243F}
+.ind-t{width:100%;min-width:760px;border-collapse:collapse;font-size:12.5px}
+.ind-t th{background:#F6F7FB;color:var(--muted);font-size:10px;letter-spacing:.08em;text-transform:uppercase;font-weight:700;padding:9px 12px;text-align:right;white-space:nowrap}
+.ind-t th:nth-child(-n+2){text-align:left}
+.ind-t td{padding:10px 12px;border-top:1px solid var(--line);text-align:right;vertical-align:top;white-space:nowrap}
+.ind-t td:nth-child(-n+2){text-align:left}
+.ind-t td.rec{font-weight:700;color:#B3243F}
+.ind-t tbody tr{cursor:pointer} .ind-t tbody tr:hover{background:#F6F7FB} .ind-t tbody tr:hover .nm{color:var(--coral)}
+.ind-t .nm{font-weight:600}
+.ind-t .det{display:block;font-size:11px;color:var(--muted);margin-top:3px;line-height:1.5}
+.ind-t .det span{display:block;white-space:nowrap}
+.ind-t tfoot td{font-weight:800;border-top:2px solid var(--ink);background:#F6F7FB}
 /* confrontos A × B */
 .cf{background:var(--card);border:1px solid var(--line);border-radius:var(--r);margin-bottom:14px;overflow:hidden}
 .cf.alvo{outline:3px solid var(--coral);outline-offset:-1px}
@@ -415,6 +432,11 @@ footer{margin-top:34px;font-size:11px;color:var(--muted);line-height:1.6;border-
     <div class="sec">
       <div class="sec-h"><h2>Fora do critério</h2><span class="sec-note" id="fora-note"></span></div>
       <div class="card pad" id="fora"></div>
+    </div>
+
+    <div class="sec">
+      <div class="sec-h"><h2>Pagamento indevido de viagem</h2><span class="sec-note" id="ind-note"></span></div>
+      <div class="card" id="indevido"></div>
     </div>
 
     <div class="sec">

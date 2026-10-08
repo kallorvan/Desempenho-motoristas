@@ -65,7 +65,18 @@ estão no topo do arquivo.
 - **Rotas de carregamento (out/2026):** Machado x Machado, Machado x Pouso Alegre e
   Machado x Varginha, nos dois sentidos, são **carregamento** e não podem ter valor de
   viagem (`ROTA_CARREGAMENTO`, alerta). A rota é comparada pelas cidades da coluna
-  Origem/Destino, sem a UF. Lista em `regras.ROTAS_CARREGAMENTO`. No painel: tabela de movimentações na ficha do motorista, com as
+  Origem/Destino, sem a UF. Lista em `regras.ROTAS_CARREGAMENTO`.
+- **Ordem cancelada (out/2026):** mesmo CT-e + mesmo trecho + mesmo motorista = uma
+  das ordens foi cancelada (a de VG 0) e não deve entrar na contagem nem no
+  pagamento. Se a ordem cancelada tem bônus de viagem → `ORDEM_CANCELADA_PAGA`
+  (alerta); sem bônus → `ORDEM_CANCELADA` (info).
+- **Apuração de pagamento indevido de viagem** (`regras.apuracao`): por motorista,
+  bônus de viagem em rota de carregamento (devido só o carregamento,
+  `VALOR_CARREGAMENTO` = R$ 25,00 por lançamento, definido pelo usuário) e bônus de
+  ordem cancelada (nada devido). Mostra pago, devido, a recuperar e viagens contadas a
+  mais (VG). No painel: bloco "Pagamento indevido de viagem" na Visão geral; no
+  relatório .xlsx: aba *Pagamento indevido*; na linha de comando: topo do relatório
+  do `regras.py`. No painel: tabela de movimentações na ficha do motorista, com as
 ocorrências logo abaixo de cada linha, e o resumo "Verificações das movimentações"
 na Visão geral. Meses sem o arquivo de lançamentos (jul e ago/2026) mostram aviso.
 
