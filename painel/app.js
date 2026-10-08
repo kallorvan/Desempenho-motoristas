@@ -412,6 +412,200 @@ document.getElementById('d-mov-tools').addEventListener('click',e=>{
   movFiltro = b.dataset.f; renderMov(ORDER[cur]);
 });
 
+/* ================= RELATÓRIO XLSX DAS VERIFICAÇÕES ================= */
+/* gerador mínimo de .xlsx (zip sem compressão + SpreadsheetML), sem biblioteca externa,
+   para o botão funcionar também com o HTML aberto direto do computador, sem internet */
+const XLSX_MIN = (()=>{
+  const enc = new TextEncoder();
+  const CRC = new Uint32Array(256).map((_,n)=>{ let c=n; for(let k=0;k<8;k++) c = c&1 ? 0xEDB88320^(c>>>1) : c>>>1; return c>>>0; });
+  const crc32 = b => { let c = 0xFFFFFFFF; for(let i=0;i<b.length;i++) c = CRC[(c^b[i])&255]^(c>>>8); return (c^0xFFFFFFFF)>>>0; };
+  function zip(files){
+    const parts = [], central = []; let off = 0;
+    const u16 = v => [v&255, v>>>8&255], u32 = v => [v&255, v>>>8&255, v>>>16&255, v>>>24&255];
+    for(const [name, text] of files){
+      const nm = enc.encode(name), data = enc.encode(text), c = crc32(data);
+      const head = [...u32(0x04034b50), ...u16(20), ...u16(0x0800), ...u16(0), ...u16(0), ...u16(0x21),
+        ...u32(c), ...u32(data.length), ...u32(data.length), ...u16(nm.length), ...u16(0)];
+      parts.push(new Uint8Array(head), nm, data);
+      central.push(new Uint8Array([...u32(0x02014b50), ...u16(20), ...u16(20), ...u16(0x0800), ...u16(0), ...u16(0), ...u16(0x21),
+        ...u32(c), ...u32(data.length), ...u32(data.length), ...u16(nm.length), ...u16(0), ...u16(0), ...u16(0), ...u16(0),
+        ...u32(0), ...u32(off)]), nm);
+      off += head.length + nm.length + data.length;
+    }
+    const csz = central.reduce((a,p)=>a+p.length,0);
+    const end = new Uint8Array([...u32(0x06054b50), ...u16(0), ...u16(0), ...u16(files.length), ...u16(files.length),
+      ...u32(csz), ...u32(off), ...u16(0)]);
+    return new Blob([...parts, ...central, end], {type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
+  }
+  const x = s => String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])).replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F]/g,'');
+  const col = i => { let s=''; i++; while(i){ const m=(i-1)%26; s=String.fromCharCode(65+m)+s; i=(i-m-1)/26; } return s; };
+  /* estilos: 0 normal · 1 cabeçalho · 2 moeda · 3 título · 4 alerta · 5 informativo · 6 nota · 7 inteiro */
+  const STYLES = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
+<numFmts count="1"><numFmt numFmtId="164" formatCode="#,##0.00"/></numFmts>
+<fonts count="5"><font><sz val="10"/><name val="Arial"/></font><font><b/><sz val="10"/><color rgb="FFFFFFFF"/><name val="Arial"/></font>
+<font><b/><sz val="13"/><color rgb="FF1C2543"/><name val="Arial"/></font><font><b/><sz val="10"/><color rgb="FFB3243F"/><name val="Arial"/></font>
+<font><i/><sz val="9"/><color rgb="FF767B8D"/><name val="Arial"/></font></fonts>
+<fills count="5"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill>
+<fill><patternFill patternType="solid"><fgColor rgb="FF1F3864"/></patternFill></fill>
+<fill><patternFill patternType="solid"><fgColor rgb="FFFBE3E8"/></patternFill></fill>
+<fill><patternFill patternType="solid"><fgColor rgb="FFFDF3DC"/></patternFill></fill></fills>
+<borders count="1"><border/></borders>
+<cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>
+<cellXfs count="8">
+<xf numFmtId="0" fontId="0" fillId="0" borderId="0"/>
+<xf numFmtId="0" fontId="1" fillId="2" borderId="0" applyFont="1" applyFill="1" applyAlignment="1"><alignment vertical="center" wrapText="1"/></xf>
+<xf numFmtId="164" fontId="0" fillId="0" borderId="0" applyNumberFormat="1"/>
+<xf numFmtId="0" fontId="2" fillId="0" borderId="0" applyFont="1"/>
+<xf numFmtId="0" fontId="3" fillId="3" borderId="0" applyFont="1" applyFill="1"/>
+<xf numFmtId="0" fontId="0" fillId="4" borderId="0" applyFill="1"/>
+<xf numFmtId="0" fontId="4" fillId="0" borderId="0" applyFont="1"/>
+<xf numFmtId="1" fontId="0" fillId="0" borderId="0" applyNumberFormat="1"/>
+</cellXfs><cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles></styleSheet>`;
+  /* sheet: {name, rows:[[valor|{v,s}]], widths:[n], header: índice da linha de cabeçalho (0-based) ou -1} */
+  function sheetXml(sh){
+    const rows = sh.rows.map((r,ri)=>`<row r="${ri+1}">${r.map((c,ci)=>{
+      if(c==null || c==='') return '';
+      const o = (typeof c==='object') ? c : {v:c};
+      const s = o.s ?? (ri===sh.header ? 1 : (typeof o.v==='number' ? 2 : 0));
+      const ref = col(ci)+(ri+1);
+      return typeof o.v==='number'
+        ? `<c r="${ref}" s="${s}"><v>${o.v}</v></c>`
+        : `<c r="${ref}" s="${s}" t="inlineStr"><is><t xml:space="preserve">${x(o.v)}</t></is></c>`;
+    }).join('')}</row>`).join('');
+    const ncol = Math.max(...sh.rows.map(r=>r.length));
+    const pane = sh.header>=0 ? `<sheetViews><sheetView workbookViewId="0"><pane ySplit="${sh.header+1}" topLeftCell="A${sh.header+2}" activePane="bottomLeft" state="frozen"/></sheetView></sheetViews>` : '';
+    const cols = sh.widths ? `<cols>${sh.widths.map((w,i)=>`<col min="${i+1}" max="${i+1}" width="${w}" customWidth="1"/>`).join('')}</cols>` : '';
+    const af = sh.header>=0 && sh.rows.length>sh.header+1 ? `<autoFilter ref="A${sh.header+1}:${col(ncol-1)}${sh.rows.length}"/>` : '';
+    return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">${pane}${cols}<sheetData>${rows}</sheetData>${af}</worksheet>`;
+  }
+  function build(sheets){
+    const ns = 'xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"';
+    const files = [
+      ['[Content_Types].xml', `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/>${sheets.map((_,i)=>`<Override PartName="/xl/worksheets/sheet${i+1}.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>`).join('')}</Types>`],
+      ['_rels/.rels', `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>`],
+      ['xl/workbook.xml', `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><workbook ${ns}><sheets>${sheets.map((s,i)=>`<sheet name="${x(s.name)}" sheetId="${i+1}" r:id="rId${i+1}"/>`).join('')}</sheets>${
+        sheets.some(s=>s.header>=0 && s.rows.length>s.header+1) ? `<definedNames>${sheets.map((s,i)=>s.header>=0 && s.rows.length>s.header+1 ? `<definedName name="_xlnm._FilterDatabase" localSheetId="${i}" hidden="1">'${x(s.name)}'!$A$${s.header+1}:$${col(Math.max(...s.rows.map(r=>r.length))-1)}$${s.rows.length}</definedName>` : '').join('')}</definedNames>` : ''}</workbook>`],
+      ['xl/_rels/workbook.xml.rels', `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">${sheets.map((_,i)=>`<Relationship Id="rId${i+1}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet${i+1}.xml"/>`).join('')}<Relationship Id="rId${sheets.length+1}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/></Relationships>`],
+      ['xl/styles.xml', STYLES],
+      ...sheets.map((s,i)=>[`xl/worksheets/sheet${i+1}.xml`, sheetXml(s)])
+    ];
+    return zip(files);
+  }
+  return {build};
+})();
+
+/* monta o relatório do período escolhido: Resumo · Ocorrências · Frete × lançamentos */
+function relatorioVerificacoes(meses, comInfo){
+  const nivelTxt = n => n==='alerta' ? 'Alerta' : 'Informativo';
+  const regrasUsadas = REGRAS.filter(r=>comInfo || r.nivel==='alerta');
+  const ordem = Object.fromEntries(REGRAS.map((r,i)=>[r.id,i]));
+  const per = meses.length===1 ? mlab(meses[0]) : `${mlab(meses[0])} a ${mlab(meses[meses.length-1])}`;
+  const agora = new Date().toLocaleString('pt-BR');
+  const L0 = meses.map(m=>LANC[m]).find(Boolean), campos = L0.campos;
+
+  /* ocorrências, uma linha por (lançamento, regra) */
+  const oc = [];
+  for(const m of meses){
+    const L = LANC[m], base = Object.fromEntries(DATASETS[m].map(d=>[d.cod,d]));
+    for(const [cod,porI] of Object.entries(L.flags)) for(const [i,fs] of Object.entries(porI)) for(const [id,msg] of fs){
+      const r = REGRA[id]; if(!comInfo && r.nivel!=='alerta') continue;
+      const x = Object.fromEntries(campos.map((c,k)=>[c, L.mot[cod][i][k]])), d = base[cod] || {};
+      oc.push({m, r, cod, d, x, msg});
+    }
+  }
+  oc.sort((a,b)=> (a.r.nivel===b.r.nivel?0:(a.r.nivel==='alerta'?-1:1)) || ordem[a.r.id]-ordem[b.r.id]
+    || a.m.localeCompare(b.m) || (a.d.nome||'').localeCompare(b.d.nome||'','pt-BR'));
+
+  /* Resumo */
+  const resumo = [
+    [{v:'Relatório de verificações das movimentações', s:3}],
+    [{v:`Período: ${per} · gerado em ${agora} · Tóliman Transportes / Grupo Dínamo`, s:6}],
+    [{v:`Alerta = precisa de conferência; Informativo = situação conhecida, só registro.${comInfo?'':' (informativos não incluídos)'}`, s:6}],
+    [],
+    ['Nível','Regra','Descrição', ...(meses.length>1?meses.map(mshort):[]), 'Lançamentos','Motoristas']
+  ];
+  for(const r of regrasUsadas){
+    const porMes = meses.map(m=>LANC[m].resumo[r.id].lanc);
+    const mot = new Set(oc.filter(o=>o.r.id===r.id).map(o=>o.m+'|'+o.cod)).size;
+    resumo.push([{v:nivelTxt(r.nivel), s:r.nivel==='alerta'?4:5}, r.titulo, r.descricao,
+      ...(meses.length>1?porMes.map(v=>({v,s:7})):[]), {v:porMes.reduce((a,b)=>a+b,0), s:7}, {v:mot, s:7}]);
+  }
+  const nAl = oc.filter(o=>o.r.nivel==='alerta').length, nIn = oc.length-nAl;
+  resumo.push([], ['Total de ocorrências', '', '', ...(meses.length>1?meses.map(()=>''):[]), {v:oc.length,s:7}],
+    [`${nAl} alerta(s)${comInfo?` · ${nIn} informativo(s)`:''}`]);
+
+  /* Ocorrências */
+  const H = ['Mês','Nível','Regra','Detalhe','Cód.','Motorista','Grupo','Tipo','Documento','Data','Chegada','Container','Cliente',
+    'Origem / Destino','T. Frete','CT-e','Nº RV','VG','Lona (qtd)','Vira','Carregamento','Lona (R$)','Viagem'];
+  const ocRows = [H, ...oc.map(o=>[mshort(o.m), {v:nivelTxt(o.r.nivel), s:o.r.nivel==='alerta'?4:5}, o.r.titulo, o.msg,
+    o.cod, o.d.nome||'', o.d.grupo||'', o.x.tipo, o.x.doc, o.x.data, o.x.chegada, o.x.container, o.x.cliente, o.x.od,
+    o.x.frete, o.x.cte, o.x.rv, {v:o.x.vg,s:7}, {v:o.x.lonaq,s:7}, o.x.vira, o.x.carreg, o.x.lona, o.x.viagem])];
+
+  /* Frete do fechamento × soma dos lançamentos, por motorista */
+  const fr = [['Mês','Cód.','Motorista','Frete no fechamento','Soma dos lançamentos','Diferença','Observação']];
+  for(const m of meses){
+    const L = LANC[m];
+    for(const d of DATASETS[m]){
+      const ls = L.mot[d.cod]; if(!ls) continue;
+      const s = Math.round(ls.reduce((a,r)=>a + r[campos.indexOf('frete')],0)*100)/100;
+      const dif = Math.round((d.frete - s)*100)/100;
+      if(Math.abs(dif)>0.005) fr.push([mshort(m), d.cod, d.nome, d.frete, s, dif, 'frete do resumo do PDF difere da soma das linhas']);
+    }
+  }
+  if(fr.length===1) fr.push(['', '', 'Nenhuma diferença no período.']);
+
+  return XLSX_MIN.build([
+    {name:'Resumo', rows:resumo, header:4, widths:[13,44,90,...(meses.length>1?meses.map(()=>9):[]),13,12]},
+    {name:'Ocorrências', rows:ocRows, header:0, widths:[8,12,34,70,7,34,30,6,16,10,10,16,30,34,12,15,10,5,9,9,13,10,10]},
+    {name:'Frete x lançamentos', rows:fr, header:0, widths:[8,7,36,18,20,13,46]}
+  ]);
+}
+
+/* entrega do arquivo: no painel publicado pelo recurso de downloads da plataforma
+   (o visitante confirma); aberto direto do computador, download comum do navegador */
+let DOWNLOADS = null;
+if(window.claude && typeof window.claude.use==='function'){
+  window.claude.use('downloads').then(ns=>{ DOWNLOADS = ns; }).catch(()=>{});
+}
+async function salvarArquivo(nome, blob){
+  if(DOWNLOADS){
+    const r = await DOWNLOADS.save({filename:nome, data:blob});
+    return r.status;
+  }
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob); a.download = nome;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(()=>URL.revokeObjectURL(a.href), 4000);
+  return 'saved';
+}
+function renderRelControles(){
+  const sel = document.getElementById('rel-per');
+  const ms = MESES.filter(m=>LANC[m]);
+  const opts = ms.slice().reverse().map(m=>`<option value="${m}">${mlab(m)}</option>`);
+  if(ms.length>1) opts.push(`<option value="todos">Todos os meses com movimentações (${ms.length})</option>`);
+  sel.innerHTML = opts.join('') || '<option value="">Sem movimentações</option>';
+  sel.value = LANC[MES] ? MES : (ms[ms.length-1]||'');
+  document.getElementById('rel-btn').disabled = !ms.length;
+}
+document.getElementById('rel-btn').addEventListener('click', async ()=>{
+  const btn = document.getElementById('rel-btn'), msg = document.getElementById('rel-msg');
+  const v = document.getElementById('rel-per').value; if(!v) return;
+  const meses = v==='todos' ? MESES.filter(m=>LANC[m]) : [v];
+  const comInfo = document.getElementById('rel-info').checked;
+  const nome = `Verificacoes_Motoristas_${v==='todos' ? meses[0]+'_a_'+meses[meses.length-1] : v}.xlsx`;
+  btn.disabled = true; msg.textContent = 'Gerando…';
+  try{
+    const st = await salvarArquivo(nome, relatorioVerificacoes(meses, comInfo));
+    msg.textContent = st==='delivered' ? 'Relatório enviado.' : `Relatório gerado: ${nome}`;
+  }catch(e){
+    const c = e && e.code;
+    msg.textContent = c==='declined' ? 'Download cancelado.' : c==='rate_limited' ? 'Já há um download aguardando confirmação.'
+      : 'Não foi possível baixar o relatório nesta visualização.';
+  }finally{ btn.disabled = false; }
+});
+
 /* resumo das verificações do mês (visão geral) */
 function renderVerif(){
   const L = LANC[MES], box = document.getElementById('verif'), note = document.getElementById('verif-note');
@@ -657,7 +851,7 @@ function renderMes(keepCod){
   ATIVOS = DATA.filter(d=>isAvaliado(d) && !isManobrista(d));
   calcRanks();
   document.getElementById('per-lab').innerHTML = `${mlab(MES)} · <strong>${DATA.length} motoristas</strong>`;
-  renderKPIs(); renderComposicao(); renderGrupos(); renderFora(); renderVerif(); renderRank(); renderTable();
+  renderKPIs(); renderComposicao(); renderGrupos(); renderFora(); renderVerif(); renderRelControles(); renderRank(); renderTable();
   renderIndividual(keepCod);
 }
 renderMes();

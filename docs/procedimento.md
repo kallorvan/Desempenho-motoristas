@@ -63,6 +63,15 @@ arquivo. No painel: tabela de movimentações na ficha do motorista, com as
 ocorrências logo abaixo de cada linha, e o resumo "Verificações das movimentações"
 na Visão geral. Meses sem o arquivo de lançamentos (jul e ago/2026) mostram aviso.
 
+**Relatório de verificações (.xlsx).** Botão no bloco "Verificações das movimentações"
+da Visão geral: escolhe o período (um mês com movimentações ou todos) e se inclui os
+informativos. O arquivo tem três abas — *Resumo* (contagem por regra), *Ocorrências*
+(uma linha por lançamento × regra, com todas as colunas do PDF e o detalhe) e
+*Frete x lançamentos* (motoristas cujo frete do fechamento difere da soma das linhas).
+O .xlsx é gerado no próprio navegador, sem biblioteca externa (funciona offline). No
+painel publicado, a entrega passa pelo recurso `downloads` da plataforma (o
+visitante confirma); por isso a publicação declara `capabilities: {downloads: true}`.
+
 ## Regras de validação (têm que fechar em 100% dos motoristas)
 
 - `Subtotal bônus = viagens + viras + carregamento + lonas`

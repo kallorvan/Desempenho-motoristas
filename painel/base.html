@@ -253,6 +253,13 @@ footer{margin-top:34px;font-size:11px;color:var(--muted);line-height:1.6;border-
 .tagx.entrou{background:rgba(30,142,90,.13);color:#1E8E5A}
 .tagx.fora{background:rgba(244,211,141,.45);color:#6B4E0E}
 .tagx.alerta{background:rgba(221,70,99,.13);color:#B3243F}
+.rel-tools{gap:10px}
+.rel-lab{font-size:12px;font-weight:700;color:var(--ink)}
+.rel-chk{font-size:12px;color:var(--ink2);display:inline-flex;gap:6px;align-items:center;cursor:pointer}
+.rel-btn{background:var(--ink);border-color:var(--ink);color:#fff;padding:8px 14px}
+.rel-btn:hover{background:var(--ink2);color:#fff}
+.rel-btn:disabled{opacity:.5;cursor:default}
+.rel-msg{font-size:11.5px;color:var(--muted)}
 /* movimentações do motorista (como no PDF) */
 .mov table{min-width:1240px;font-size:11.5px}
 .mov thead th{cursor:default;font-size:10px;padding:9px 9px}
@@ -389,6 +396,13 @@ footer{margin-top:34px;font-size:11px;color:var(--muted);line-height:1.6;border-
 
     <div class="sec">
       <div class="sec-h"><h2>Verificações das movimentações</h2><span class="sec-note" id="verif-note"></span></div>
+      <div class="tools rel-tools">
+        <label for="rel-per" class="rel-lab">Relatório de verificações</label>
+        <select id="rel-per" aria-label="Período do relatório"></select>
+        <label class="rel-chk"><input type="checkbox" id="rel-info" checked> incluir informativos</label>
+        <button class="chip rel-btn" id="rel-btn" type="button">Baixar relatório (.xlsx)</button>
+        <span class="rel-msg" id="rel-msg" role="status"></span>
+      </div>
       <div class="card" id="verif"></div>
     </div>
 
