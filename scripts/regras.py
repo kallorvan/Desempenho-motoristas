@@ -64,6 +64,26 @@ def carregar(mes):
     return d, movs
 
 
+def indice_cte(movs):
+    """CT-e -> [(cod, índice, lançamento)] dos lançamentos com frete (base da regra de duplicidade)."""
+    por_cte = defaultdict(list)
+    for cod, ls in movs.items():
+        for i, x in enumerate(ls):
+            if x['cte'] != CTE_SEM_NUMERO and x['frete'] > 0:
+                por_cte[x['cte']].append((cod, i, x))
+    return por_cte
+
+
+def grupos_duplicados(mes):
+    """[{cte, itens: [[cod, índice], ...]}] dos CT-e com frete em mais de um lançamento."""
+    carga = carregar(mes)
+    if carga is None:
+        return []
+    _, movs = carga
+    return [{'cte': cte, 'itens': [[c, i] for c, i, _ in v]}
+            for cte, v in indice_cte(movs).items() if len(v) > 1]
+
+
 def verificar(mes):
     """{cod: {índice do lançamento: [[id, mensagem], ...]}} ou None se o mês não tem lançamentos."""
     carga = carregar(mes)
@@ -76,11 +96,7 @@ def verificar(mes):
         oc[cod][i].append([rid, msg])
 
     # índice por CT-e para a regra de duplicidade
-    por_cte = defaultdict(list)
-    for cod, ls in movs.items():
-        for i, x in enumerate(ls):
-            if x['cte'] != CTE_SEM_NUMERO and x['frete'] > 0:
-                por_cte[x['cte']].append((cod, i, x))
+    por_cte = indice_cte(movs)
 
     per = d.get('periodo', {}).get('viagens')
     if per:

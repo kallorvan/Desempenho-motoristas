@@ -44,7 +44,7 @@ def main():
             d, _ = carga
             oc = regras.verificar(mes)
             lanc[mes] = {'campos': d['campos'], 'periodo': d['periodo'], 'mot': d['motoristas'],
-                         'flags': oc, 'resumo': regras.resumo(oc)}
+                         'flags': oc, 'resumo': regras.resumo(oc), 'dup': regras.grupos_duplicados(mes)}
         aaaa, mm = mes.split('-')
         nome = MESES[int(mm) - 1]
         mlabel[mes] = f'{nome} / {aaaa}'

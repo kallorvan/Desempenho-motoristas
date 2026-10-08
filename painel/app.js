@@ -397,7 +397,8 @@ function renderMov(d){
       <td class="num">${x.vg}</td><td class="num">${x.lonaq}</td>
       <td class="num">${v(x.vira)}</td><td class="num">${v(x.carreg)}</td><td class="num">${v(x.lona)}</td><td class="num">${v(x.viagem)}</td>
     </tr>${f.length?`<tr class="sub ${nivelLinha(i)}"><td colspan="15"><div class="subin">${f.map(([id,msg])=>
-      `<span class="fi"><span class="flag ${REGRA[id].nivel}" title="${esc(REGRA[id].descricao)}">${REGRA[id].curto}</span><span class="fmsg">${esc(msg)}</span></span>`).join('')}</div></td></tr>`:''}`; }).join('');
+      `<span class="fi"><span class="flag ${REGRA[id].nivel}" title="${esc(REGRA[id].descricao)}">${REGRA[id].curto}</span><span class="fmsg">${esc(msg)}</span>${
+        id==='CTE_FRETE_DUP'?` <button class="link" data-cte="${esc(x.cte)}">ver lado a lado</button>`:''}</span>`).join('')}</div></td></tr>`:''}`; }).join('');
   const s = k => L.reduce((a,x)=>a+x[k],0);
  box.innerHTML = `<table><thead><tr>${H.map((h,i)=>`<th style="text-align:${[0,3,4,5].includes(i)?'left':'right'}">${h}</th>`).join('')}</tr></thead>
     <tbody>${rows || `<tr><td colspan="15" style="text-align:center;color:var(--muted);padding:20px">Nenhum lançamento com esse filtro.</td></tr>`}</tbody>
@@ -407,6 +408,9 @@ function renderMov(d){
   const dif = d.frete - s('frete');
   foot.innerHTML = `Frete usado no fechamento: R$ ${brl(d.frete)}${Math.abs(dif)>0.005?` — <strong>R$ ${brl(Math.abs(dif))} ${dif>0?'a mais':'a menos'} que a soma dos lançamentos</strong> (resumo do PDF)`:' — igual à soma dos lançamentos'} · bônus operacional: R$ ${brl(d.bonusOp)}.`;
 }
+document.getElementById('d-mov').addEventListener('click',e=>{
+  const b = e.target.closest('button[data-cte]'); if(b) abrirConfronto(b.dataset.cte);
+});
 document.getElementById('d-mov-tools').addEventListener('click',e=>{
   const b = e.target.closest('.chip'); if(!b) return;
   movFiltro = b.dataset.f; renderMov(ORDER[cur]);
@@ -556,9 +560,23 @@ function relatorioVerificacoes(meses, comInfo){
   }
   if(fr.length===1) fr.push(['', '', 'Nenhuma diferença no período.']);
 
+  /* Confronto lado a lado: uma linha por CT-e, lançamento A e B nas colunas */
+  const cfc = [['doc','Documento'],['data','Data'],['chegada','Chegada'],['container','Container'],['od','Origem / Destino'],
+               ['frete','T. Frete'],['rv','Nº RV'],['vg','VG'],['viagem','Bônus viagem']];
+  const nMax = Math.max(2, ...meses.flatMap(m=>confrontosDe(m).map(c=>c.itens.length)));
+  const cf = [['Mês','CT-e','Leitura','Campos que diferem',
+    ...Array.from({length:nMax},(_,i)=>{ const L = String.fromCharCode(65+i);
+      return [`${L} · Cód.`,`${L} · Motorista`, ...cfc.map(c=>`${L} · ${c[1]}`)]; }).flat()]];
+  for(const m of meses) for(const c of confrontosDe(m)){
+    cf.push([mshort(m), c.cte, cfLeitura(c), c.difs.map(d=>CF_CAMPOS.find(x=>x[0]===d)[1]).join(', ') || 'nenhum',
+      ...c.itens.flatMap(it=>[it.cod, it.nome, ...cfc.map(([k])=> ['vg'].includes(k) ? {v:it.x[k],s:7} : it.x[k])])]);
+  }
+  if(cf.length===1) cf.push(['', '', 'Nenhum CT-e com frete em mais de um lançamento no período.']);
+
   return XLSX_MIN.build([
     {name:'Resumo', rows:resumo, header:4, widths:[13,44,90,...(meses.length>1?meses.map(()=>9):[]),13,12]},
     {name:'Ocorrências', rows:ocRows, header:0, widths:[8,12,34,70,7,34,30,6,16,10,10,16,30,34,12,15,10,5,9,9,13,10,10]},
+    {name:'Confronto CT-e', rows:cf, header:0, widths:[8,14,62,34, ...Array.from({length:nMax},()=>[7,32,15,10,10,15,32,12,10,5,12]).flat()]},
     {name:'Frete x lançamentos', rows:fr, header:0, widths:[8,7,36,18,20,13,46]}
   ]);
 }
@@ -606,6 +624,87 @@ document.getElementById('rel-btn').addEventListener('click', async ()=>{
   }finally{ btn.disabled = false; }
 });
 
+/* ================= CONFRONTOS (CT-e com frete em mais de um lançamento) ================= */
+const CF_CAMPOS = [
+  ['cod','Motorista'],['doc','Documento'],['tipo','Tipo'],['data','Data'],['chegada','Chegada'],['container','Container'],
+  ['cliente','Cliente'],['od','Origem / Destino'],['frete','T. Frete'],['rv','Nº RV'],['vg','VG (viagem contada)'],
+  ['lonaq','Lona (qtd)'],['vira','Vira'],['carreg','Carregamento'],['lona','Lona (R$)'],['viagem','Bônus de viagem']];
+const CF_MOEDA = new Set(['frete','vira','carreg','lona','viagem']);
+function confrontosDe(mes){
+  const L = LANC[mes]; if(!L) return [];
+  const nome = Object.fromEntries(DATASETS[mes].map(d=>[d.cod,d.nome]));
+  return L.dup.map(g=>{
+    const itens = g.itens.map(([cod,i])=>({cod, i, nome:nome[cod]||cod, x:Object.fromEntries(L.campos.map((c,k)=>[c, L.mot[cod][i][k]]))}));
+    const difs = CF_CAMPOS.map(c=>c[0]).filter(k=>new Set(itens.map(it=> k==='cod' ? it.cod : it.x[k])).size>1);
+    const mesmo = new Set(itens.map(it=>it.cod)).size===1;
+    const trecho = new Set(itens.map(it=>it.x.od)).size===1;
+    return {cte:g.cte, itens, difs, mesmo, trecho,
+      frete: itens.reduce((a,it)=>a+it.x.frete,0), bonus: itens.reduce((a,it)=>a+it.x.viagem,0),
+      vg: itens.reduce((a,it)=>a+it.x.vg,0)};
+  }).sort((a,b)=> (b.mesmo-a.mesmo) || (b.trecho-a.trecho) || (b.frete-a.frete));
+}
+function cfLeitura(c){
+  const p = [];
+  p.push(c.mesmo ? 'Mesmo motorista' : 'Motoristas diferentes');
+  p.push(c.trecho ? 'mesmo trecho' : 'trechos diferentes');
+  if(c.difs.includes('container')) p.push('containers diferentes'); else if(c.itens[0].x.container) p.push('mesmo container');
+  if(!c.difs.includes('frete')) p.push('mesmo valor de frete');
+  if(!c.difs.includes('rv')) p.push('mesmo Nº RV');
+  return p.join(' · ');
+}
+let CF_ALVO = null;
+function renderConfrontos(){
+  const L = LANC[MES], cs = confrontosDe(MES);
+  const note = document.getElementById('cf-note'), list = document.getElementById('cf-list'), k = document.getElementById('cf-kpis');
+  if(!L){ note.textContent=''; k.innerHTML=''; list.innerHTML = `<div class="card pad" style="color:var(--muted);font-size:12.5px">Movimentações detalhadas não disponíveis para ${mlab(MES)}.</div>`; return; }
+  note.textContent = `${mlab(MES)} · mesmo CT-e com frete em mais de um lançamento, comparado campo a campo · campos diferentes marcados com ≠`;
+  const tot = (f)=>cs.filter(f).length;
+  k.innerHTML = [
+    ['CT-e em confronto', cs.length, `${cs.reduce((a,c)=>a+c.itens.length,0)} lançamentos`, ''],
+    ['Mesmo motorista', tot(c=>c.mesmo), `${tot(c=>!c.mesmo)} entre motoristas diferentes`, 'k1'],
+    ['Mesmo trecho', tot(c=>c.trecho), `${tot(c=>!c.trecho)} com trechos diferentes`, 'k2'],
+    ['Frete repetido', 'R$ '+compact(cs.reduce((a,c)=>a+c.frete-Math.max(...c.itens.map(it=>it.x.frete)),0)), 'valor que aparece a mais nas duplicidades', 'k3'],
+    ['Bônus de viagem envolvido', 'R$ '+brl(cs.reduce((a,c)=>a+c.bonus,0)), 'soma do bônus pago nos lançamentos em confronto', 'k4']
+  ].map(([l,v,s,c])=>`<div class="kpi ${c}"><div class="lab">${l}</div><div class="val"><span class="num">${v}</span></div><div class="sub">${s}</div></div>`).join('');
+  const q = document.getElementById('cf-q').value.trim().toLowerCase(), f = document.getElementById('cf-f').value;
+  const vis = cs.filter(c=> (f==='todos' || (f==='mesmo'&&c.mesmo) || (f==='entre'&&!c.mesmo) || (f==='trecho'&&c.trecho) || (f==='outro'&&!c.trecho))
+    && (!q || c.cte.toLowerCase().includes(q) || c.itens.some(it=>it.nome.toLowerCase().includes(q)||it.cod.includes(q)||it.x.doc.toLowerCase().includes(q))));
+  const letra = i => String.fromCharCode(65+i);
+  const fmt = (k,v,it)=> k==='cod' ? `${esc(it.nome)} <span class="gtag num">${it.cod}</span>` : CF_MOEDA.has(k) ? 'R$ '+brl(v) : esc(v===''?'—':v);
+  list.innerHTML = vis.map(c=>`
+    <div class="cf" id="cf-${esc(c.cte)}">
+      <div class="cf-h">
+        <div><div class="ct num">CT-e ${esc(c.cte)}</div><div style="font-size:11.5px;color:var(--ink2);margin-top:3px">${cfLeitura(c)}</div></div>
+        <div class="bd">
+          <span class="flag ${c.mesmo?'alerta':'info'}">${c.mesmo?'mesmo motorista':'entre motoristas'}</span>
+          <span class="flag ${c.trecho?'alerta':'info'}">${c.trecho?'mesmo trecho':'trechos diferentes'}</span>
+        </div>
+        <div class="vv num">frete R$ ${brl(c.frete)} · bônus R$ ${brl(c.bonus)} · VG ${c.vg}</div>
+      </div>
+      <div style="overflow-x:auto"><table class="cf-t">
+        <thead><tr><th>Campo</th>${c.itens.map((it,i)=>`<th>Lançamento ${letra(i)} · <button data-cod="${it.cod}" title="Abrir a ficha do motorista">${esc(it.nome.split(' ')[0])} ${it.cod}</button></th>`).join('')}</tr></thead>
+        <tbody>${CF_CAMPOS.map(([kk,l])=>`<tr class="${c.difs.includes(kk)?'dif':''}"><th>${l}</th>${c.itens.map(it=>
+          `<td class="${CF_MOEDA.has(kk)||['doc','data','chegada','container','rv','vg','lonaq'].includes(kk)?'num':''}">${fmt(kk, kk==='cod'?it.cod:it.x[kk], it)}</td>`).join('')}</tr>`).join('')}</tbody>
+      </table></div>
+      <div class="cf-foot">${c.difs.length ? `Diferem: ${c.difs.map(d=>CF_CAMPOS.find(x=>x[0]===d)[1]).join(', ')}.` : 'Todos os campos iguais.'}
+        ${c.vg>1 ? ` <strong>Viagem contada ${c.vg} vezes (VG).</strong>` : ''}</div>
+    </div>`).join('') || `<div class="card pad" style="color:var(--muted);font-size:12.5px">Nenhum confronto com esse filtro.</div>`;
+  if(CF_ALVO){
+    const el = document.getElementById('cf-'+CF_ALVO);
+    if(el){ el.classList.add('alvo'); setTimeout(()=>{ const y = el.getBoundingClientRect().top + scrollY - topHdr.offsetHeight - 12; scrollTo({top:y,behavior:'smooth'}); },60); }
+    CF_ALVO = null;
+  }
+}
+function abrirConfronto(cte){
+  document.getElementById('cf-q').value = ''; document.getElementById('cf-f').value = 'todos';
+  CF_ALVO = cte; setTab('tab-conf'); renderConfrontos();
+}
+document.getElementById('cf-q').addEventListener('input',renderConfrontos);
+document.getElementById('cf-f').addEventListener('change',renderConfrontos);
+document.getElementById('cf-list').addEventListener('click',e=>{
+  const b = e.target.closest('button[data-cod]'); if(b) openDriver(b.dataset.cod);
+});
+
 /* resumo das verificações do mês (visão geral) */
 function renderVerif(){
   const L = LANC[MES], box = document.getElementById('verif'), note = document.getElementById('verif-note');
@@ -617,19 +716,22 @@ function renderVerif(){
     const c = L.resumo[r.id];
     const casos = [];
     Object.entries(L.flags).forEach(([cod,porI])=>Object.entries(porI).forEach(([i,fs])=>fs.forEach(([id,msg])=>{
-      if(id===r.id){ const x = L.mot[cod][i]; casos.push({cod, doc:x[L.campos.indexOf('doc')], data:x[L.campos.indexOf('data')], msg}); }
+      if(id===r.id){ const x = L.mot[cod][i]; casos.push({cod, doc:x[L.campos.indexOf('doc')], data:x[L.campos.indexOf('data')], msg,
+        cte: id==='CTE_FRETE_DUP' ? x[L.campos.indexOf('cte')] : ''}); }
     })));
     casos.sort((a,b)=> (nome[a.cod]||'').localeCompare(nome[b.cod]||'','pt-BR'));
     return `<details class="vr ${c.lanc?'':'zero'}" ${c.lanc?'':'onclick="return false"'}>
       <summary><span class="flag ${r.nivel}">${r.nivel==='alerta'?'alerta':'info'}</span>
         <div><div class="vt">${r.titulo}</div><div class="vd">${r.descricao}</div></div>
         <div class="vc num">${c.lanc} lanç.<small>${c.mot} motorista(s)</small></div></summary>
-      ${c.lanc?`<div class="vlist">${casos.map(k=>`<button class="vli" data-cod="${k.cod}"><span class="vn">${nome[k.cod]||k.cod} <span class="gtag num">${k.cod}</span></span><span class="vdoc num">${k.doc} · ${k.data}</span><span class="vm">${esc(k.msg)}</span></button>`).join('')}</div>`:''}
+      ${c.lanc?`<div class="vlist">${casos.map(k=>`<button class="vli" data-cod="${k.cod}"${k.cte?` data-cte="${esc(k.cte)}" title="Abrir o confronto lado a lado"`:''}><span class="vn">${nome[k.cod]||k.cod} <span class="gtag num">${k.cod}</span></span><span class="vdoc num">${k.doc} · ${k.data}</span><span class="vm">${esc(k.msg)}</span></button>`).join('')}</div>`:''}
     </details>`;
   }).join('');
 }
 document.getElementById('verif').addEventListener('click',e=>{
-  const b = e.target.closest('.vli'); if(b){ openDriver(b.dataset.cod); setTimeout(()=>document.getElementById('d-mov-sec').scrollIntoView({behavior:'smooth'}),50); }
+  const b = e.target.closest('.vli'); if(!b) return;
+  if(b.dataset.cte){ abrirConfronto(b.dataset.cte); return; }
+  openDriver(b.dataset.cod); setTimeout(()=>document.getElementById('d-mov-sec').scrollIntoView({behavior:'smooth'}),50);
 });
 
 sel.addEventListener('change',()=>showDriver(ORDER.findIndex(d=>d.cod===sel.value)));
@@ -771,7 +873,7 @@ document.getElementById('ev-list').addEventListener('keydown',e=>{
 });
 
 /* ================= ABAS ================= */
-const TABS = {'tab-geral':'v-geral','tab-ind':'v-ind','tab-evo':'v-evo'};
+const TABS = {'tab-geral':'v-geral','tab-ind':'v-ind','tab-evo':'v-evo','tab-conf':'v-conf'};
 function setTab(id){
   Object.entries(TABS).forEach(([t,v])=>{
     document.getElementById(t).setAttribute('aria-selected', t===id);
@@ -851,7 +953,7 @@ function renderMes(keepCod){
   ATIVOS = DATA.filter(d=>isAvaliado(d) && !isManobrista(d));
   calcRanks();
   document.getElementById('per-lab').innerHTML = `${mlab(MES)} · <strong>${DATA.length} motoristas</strong>`;
-  renderKPIs(); renderComposicao(); renderGrupos(); renderFora(); renderVerif(); renderRelControles(); renderRank(); renderTable();
+  renderKPIs(); renderComposicao(); renderGrupos(); renderFora(); renderVerif(); renderRelControles(); renderRank(); renderTable(); renderConfrontos();
   renderIndividual(keepCod);
 }
 renderMes();

@@ -52,7 +52,9 @@ h1{font-size:clamp(20px,3vw,27px);line-height:1.1;margin:0;font-weight:800;lette
 .period .dot{width:7px;height:7px;border-radius:50%;background:var(--coral)}
 
 /* abas */
-nav.tabs{max-width:var(--maxw);margin:0 auto;padding:16px 28px 0;display:flex;gap:2px}
+nav.tabs{max-width:var(--maxw);margin:0 auto;padding:16px 28px 0;display:flex;gap:2px;overflow-x:auto;scrollbar-width:none}
+nav.tabs::-webkit-scrollbar{display:none}
+.tab{white-space:nowrap}
 .tab{appearance:none;border:0;background:transparent;cursor:pointer;font-family:inherit;
   font-size:13px;font-weight:600;color:var(--muted);padding:10px 16px 12px;position:relative;letter-spacing:.01em}
 .tab:hover{color:var(--ink)}
@@ -254,6 +256,26 @@ footer{margin-top:34px;font-size:11px;color:var(--muted);line-height:1.6;border-
 .tagx.fora{background:rgba(244,211,141,.45);color:#6B4E0E}
 .tagx.alerta{background:rgba(221,70,99,.13);color:#B3243F}
 .rel-tools{gap:10px}
+/* confrontos A × B */
+.cf{background:var(--card);border:1px solid var(--line);border-radius:var(--r);margin-bottom:14px;overflow:hidden}
+.cf.alvo{outline:3px solid var(--coral);outline-offset:-1px}
+.cf-h{display:flex;flex-wrap:wrap;gap:8px 14px;align-items:center;justify-content:space-between;padding:12px 16px;border-bottom:1px solid var(--line);background:#F6F7FB}
+.cf-h .ct{font-size:13px;font-weight:800;letter-spacing:.01em}
+.cf-h .bd{display:flex;flex-wrap:wrap;gap:6px}
+.cf-h .vv{font-size:12px;font-weight:600;white-space:nowrap}
+.cf-t{width:100%;border-collapse:collapse;font-size:12px;min-width:0;background:var(--card)}
+.cf-t th,.cf-t td{padding:7px 12px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}
+.cf-t tr:last-child td,.cf-t tr:last-child th{border-bottom:0}
+.cf-t thead th{position:static;background:var(--ink);color:#fff;font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;cursor:default}
+.cf-t thead th button{appearance:none;border:0;background:none;color:#fff;font:inherit;cursor:pointer;padding:0;text-align:left;text-decoration:underline;text-underline-offset:3px}
+.cf-t tbody th{width:150px;font-size:10.5px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.06em;white-space:nowrap}
+.cf-t td{width:calc((100% - 150px)/2)}
+.cf-t tr.dif td{background:rgba(221,70,99,.07);font-weight:700;color:#8E1C33}
+.cf-t tr.dif th::after{content:" ≠";color:var(--coral)}
+.cf-t td.num{font-family:'IBM Plex Mono',ui-monospace,monospace}
+.cf-foot{padding:9px 16px;font-size:11.5px;color:var(--ink2);border-top:1px solid var(--line);background:#FBFBFD}
+.link{appearance:none;border:0;background:none;padding:0;font:inherit;color:var(--coral);cursor:pointer;text-decoration:underline;text-underline-offset:2px}
+@media (max-width:640px){.cf-t tbody th{width:96px;white-space:normal}.cf-t th,.cf-t td{padding:6px 8px}}
 .rel-lab{font-size:12px;font-weight:700;color:var(--ink)}
 .rel-chk{font-size:12px;color:var(--ink2);display:inline-flex;gap:6px;align-items:center;cursor:pointer}
 .rel-btn{background:var(--ink);border-color:var(--ink);color:#fff;padding:8px 14px}
@@ -349,6 +371,7 @@ footer{margin-top:34px;font-size:11px;color:var(--muted);line-height:1.6;border-
     <button class="tab" role="tab" id="tab-geral" aria-selected="true" aria-controls="v-geral">Visão geral</button>
     <button class="tab" role="tab" id="tab-ind" aria-selected="false" aria-controls="v-ind">Por motorista</button>
     <button class="tab" role="tab" id="tab-evo" aria-selected="false" aria-controls="v-evo">Evolução</button>
+    <button class="tab" role="tab" id="tab-conf" aria-selected="false" aria-controls="v-conf">Confrontos</button>
   </nav>
 </header>
 
@@ -544,6 +567,26 @@ footer{margin-top:34px;font-size:11px;color:var(--muted);line-height:1.6;border-
       </div>
       <div class="card ev-list" id="ev-list"></div>
       <div class="tbl-foot" id="ev-foot"></div>
+    </div>
+  </section>
+
+  <section id="v-conf" role="tabpanel" aria-labelledby="tab-conf" class="hidden">
+    <div class="sec" style="margin-top:22px">
+      <div class="sec-h"><h2>Confronto de lançamentos duplicados</h2><span class="sec-note" id="cf-note"></span></div>
+      <div class="kpis" id="cf-kpis" style="margin-top:0"></div>
+    </div>
+    <div class="sec">
+      <div class="tools">
+        <input type="search" id="cf-q" placeholder="Buscar por motorista, código, CT-e ou documento…" aria-label="Buscar confronto">
+        <select id="cf-f" aria-label="Filtrar confrontos">
+          <option value="todos">Todos os confrontos</option>
+          <option value="mesmo">Mesmo motorista</option>
+          <option value="entre">Entre motoristas</option>
+          <option value="trecho">Mesmo trecho</option>
+          <option value="outro">Trechos diferentes</option>
+        </select>
+      </div>
+      <div id="cf-list"></div>
     </div>
   </section>
 

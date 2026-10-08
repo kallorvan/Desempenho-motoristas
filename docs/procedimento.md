@@ -72,6 +72,17 @@ O .xlsx é gerado no próprio navegador, sem biblioteca externa (funciona offlin
 painel publicado, a entrega passa pelo recurso `downloads` da plataforma (o
 visitante confirma); por isso a publicação declara `capabilities: {downloads: true}`.
 
+**Aba Confrontos.** Para cada CT-e com frete em mais de um lançamento (regra
+`CTE_FRETE_DUP`, grupos em `regras.grupos_duplicados`), um quadro A × B campo a campo
+(motorista, documento, datas, container, cliente, trecho, frete, Nº RV, VG, lona,
+vira, carregamento, bônus), com os campos diferentes marcados com ≠ e uma leitura
+automática (mesmo motorista ou não, mesmo trecho ou não, mesmo container, mesmo Nº
+RV). Filtros por tipo e busca. Abre também pelo link "ver lado a lado" na ficha do
+motorista e pelos casos do bloco de verificações. O relatório .xlsx traz a mesma
+comparação na aba *Confronto CT-e* (uma linha por CT-e, A e B nas colunas).
+Em set/2026: 20 CT-e, todos com 2 lançamentos; 2 do mesmo motorista (0757, 0763),
+3 no mesmo trecho.
+
 ## Regras de validação (têm que fechar em 100% dos motoristas)
 
 - `Subtotal bônus = viagens + viras + carregamento + lonas`
