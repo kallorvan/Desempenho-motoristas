@@ -197,10 +197,9 @@ def gravar_lancamentos(mes, txt, movs):
                     ',\n "motoristas": {\n' + ',\n'.join(linhas) + '\n }\n}\n', encoding='utf8')
 
 
-def main():
-    if len(sys.argv) != 3 or not re.fullmatch(r'\d{4}-\d{2}', sys.argv[2]):
-        sys.exit(__doc__)
-    pdf, mes = Path(sys.argv[1]), sys.argv[2]
+def processar(pdf):
+    """Lê o PDF e confere cada bloco. Devolve (rows, movs, rel, txt): rows com os valores
+    do resumo (sem ajustes nem colunas derivadas), movs = lançamentos por motorista."""
     txt = texto_pdf(pdf)
 
     marcas = list(RE_MOTORISTA.finditer(txt))
@@ -298,6 +297,14 @@ def main():
                          _premTotPdf=pr['premTotPdf'], _totalPdf=pr['totalPdf'], _nLanc=len(lanc), _freteLinhas=sf))
 
     rows.sort(key=lambda r: r['nome'])
+    return rows, movs, rel, txt
+
+
+def main():
+    if len(sys.argv) != 3 or not re.fullmatch(r'\d{4}-\d{2}', sys.argv[2]):
+        sys.exit(__doc__)
+    pdf, mes = Path(sys.argv[1]), sys.argv[2]
+    rows, movs, rel, txt = processar(pdf)
     aplicar_ajustes(rows, mes, rel)
     derivar(rows)
 

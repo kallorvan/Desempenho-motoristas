@@ -32,6 +32,11 @@ o mesmo caminho de arquivo mantém a URL.
    `python3 scripts/conferir_xlsx.py entrada/<export>.xlsx entrada/<arquivo>.pdf AAAA-MM`
    antes de fechar os achados: ele tem os valores sem arredondamento e separa
    divergência real da fonte de efeito do PDF (não traz o bloco de prêmio).
+   Se o Rodopar **reemitir o PDF de um mês já fechado**, comparar as versões com
+   `python3 scripts/comparar_versoes.py entrada/<pago>.pdf entrada/<novo>.pdf AAAA-MM`
+   → `saida/Comparativo_Versoes_PDF_MM_AAAA.xlsx` (abas Resumo, Por motorista com
+   paga × nova e acerto, Lançamentos campo a campo, Nº RV, x Apuração). O fechamento
+   segue na versão paga; o acerto vai para o mês seguinte se o usuário decidir.
 4. **Conferir contra os lançamentos** — somar as linhas de cada bloco e comparar
    com o resumo. Divergência aqui é achado, não erro de leitura: reportar e
    **manter o valor do resumo**, que é o oficial do fechamento. Exceção só com

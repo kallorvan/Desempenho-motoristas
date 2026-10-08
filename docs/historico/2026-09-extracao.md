@@ -187,9 +187,36 @@ bônus operacional e R$ 1.673,35 de premiação. Totais da frota mantidos com to
 - `GRUPO VOLVO BI TRUCK` (18) e `GRUPO METEOR VW` (49) ficaram sem motoristas no
   mês; seguem na tabela.
 
+## Versão 2 do PDF (reemitida depois do pagamento)
+
+Em out/2026 o Rodopar reemitiu o PDF de setembro (`..._Versao_2.pdf`) **depois** de o
+mês ter sido pago com a versão anterior. O fechamento (planilha, painel, apuração)
+**continua na versão paga**; a versão 2 só entra no comparativo
+(`scripts/comparar_versoes.py` → `saida/Comparativo_Versoes_PDF_09_2026.xlsx`).
+
+- Bônus operacional e bonificações: R$ 282.052,89 → R$ 280.852,18 (**−R$ 1.200,71**);
+  premiação igual. Viagens 706 → 697. Frete dos resumos −R$ 101.166,56 (sem ajustes).
+- 10 motoristas mudam: 9 com bonificação menor (pago a mais R$ 1.250,71) e 1 maior
+  (0648, +R$ 50,00 de carregamento em 2 lançamentos novos — pago a menos).
+  0752 só tem o frete do resumo corrigido para a soma das linhas (bônus igual).
+- 0521: taxa do bônus de viagem baixou de 1,85% para 1,75% em 21 linhas e a viagem
+  do doc. 1-001-077389 (CT-e 133843/133842) virou carregamento (−R$ 283,36 no total).
+- Viagens retiradas/convertidas em carregamento: 0923, 0251, 0606, 0922 (rotas de
+  carregamento, já na apuração) e 0135, 0337 (CT-e duplicados de Confrontos).
+  0757: retirada a ordem duplicada do CT-e 05-1-018855 (bônus + lona, −R$ 198,38).
+- **Apuração de pagamento indevido × versão 2:** dos R$ 1.138,56 apurados, a versão 2
+  recupera R$ 571,07. Seguem **não corrigidos** os 7 lançamentos de
+  Machado x Varginha (0720, 0765, 0304 ×2, 0900, 0039, 0554 — R$ 552,49 a recuperar).
+  Onde corrigiu, a versão 2 lança carregamento de R$ 50,00 em alguns casos (0606,
+  0922) em vez dos R$ 25,00 da apuração.
+- 31 lançamentos mudaram só o Nº RV (PEND./FERIAS → número): sem efeito em valor.
+
 ## Pendências para o próximo fechamento
 
 - **Out/2026 — 0752 ANANIAS DOS REIS ROSA CANDIDO:** conferir se entraram os
   **R$ 50,00** devidos por ter carregado as viagens do doc. `M: 1-001-077350`
   (set/2026), passadas para o 0765. Reportar se não aparecer.
 - ~~Set/2026 — 0720: reprocessar com o PDF corrigido~~ — feito.
+- **Out/2026 — acerto da versão 2 de setembro:** definir com o usuário se o acerto
+  (−R$ 1.250,71 de 9 motoristas, +R$ 50,00 do 0648) e os R$ 552,49 de Machado x
+  Varginha que a versão 2 não corrigiu entram no fechamento de outubro.
