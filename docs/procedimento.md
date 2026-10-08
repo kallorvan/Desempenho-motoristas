@@ -58,8 +58,14 @@ truncado no PDF; no xlsx vem completo).
 As regras ficam em `scripts/regras.py` (lista `REGRAS` + função `verificar`) e rodam
 a cada build do painel — criar ou ajustar uma regra **não** exige reler o PDF.
 Nível `alerta` = precisa de conferência; `info` = situação conhecida, só registro.
-Os parâmetros (taxas usuais do bônus de viagem, valor por lona) estão no topo do
-arquivo. No painel: tabela de movimentações na ficha do motorista, com as
+Os parâmetros (taxas usuais do bônus de viagem, valor por lona, rotas de carregamento)
+estão no topo do arquivo.
+
+**Regras definidas pelo usuário:**
+- **Rotas de carregamento (out/2026):** Machado x Machado, Machado x Pouso Alegre e
+  Machado x Varginha, nos dois sentidos, são **carregamento** e não podem ter valor de
+  viagem (`ROTA_CARREGAMENTO`, alerta). A rota é comparada pelas cidades da coluna
+  Origem/Destino, sem a UF. Lista em `regras.ROTAS_CARREGAMENTO`. No painel: tabela de movimentações na ficha do motorista, com as
 ocorrências logo abaixo de cada linha, e o resumo "Verificações das movimentações"
 na Visão geral. Meses sem o arquivo de lançamentos (jul e ago/2026) mostram aviso.
 

@@ -634,14 +634,15 @@ function confrontosDe(mes){
   const L = LANC[mes]; if(!L) return [];
   const nome = Object.fromEntries(DATASETS[mes].map(d=>[d.cod,d.nome]));
   return L.dup.map(g=>{
-    const itens = g.itens.map(([cod,i])=>({cod, i, nome:nome[cod]||cod, x:Object.fromEntries(L.campos.map((c,k)=>[c, L.mot[cod][i][k]]))}));
+    const itens = g.itens.map(([cod,i])=>({cod, i, nome:nome[cod]||cod, x:Object.fromEntries(L.campos.map((c,k)=>[c, L.mot[cod][i][k]])),
+      local: ((L.flags[cod]||{})[i]||[]).some(f=>f[0]==='ROTA_CARREGAMENTO')}));
     const difs = CF_CAMPOS.map(c=>c[0]).filter(k=>new Set(itens.map(it=> k==='cod' ? it.cod : it.x[k])).size>1);
     const mesmo = new Set(itens.map(it=>it.cod)).size===1;
     const trecho = new Set(itens.map(it=>it.x.od)).size===1;
-    return {cte:g.cte, itens, difs, mesmo, trecho,
+    return {cte:g.cte, itens, difs, mesmo, trecho, local: itens.some(it=>it.local),
       frete: itens.reduce((a,it)=>a+it.x.frete,0), bonus: itens.reduce((a,it)=>a+it.x.viagem,0),
       vg: itens.reduce((a,it)=>a+it.x.vg,0)};
-  }).sort((a,b)=> (b.mesmo-a.mesmo) || (b.trecho-a.trecho) || (b.frete-a.frete));
+  }).sort((a,b)=> (b.mesmo-a.mesmo) || (b.trecho-a.trecho) || (b.local-a.local) || (b.frete-a.frete));
 }
 function cfLeitura(c){
   const p = [];
@@ -650,6 +651,8 @@ function cfLeitura(c){
   if(c.difs.includes('container')) p.push('containers diferentes'); else if(c.itens[0].x.container) p.push('mesmo container');
   if(!c.difs.includes('frete')) p.push('mesmo valor de frete');
   if(!c.difs.includes('rv')) p.push('mesmo Nº RV');
+  const loc = c.itens.map((it,i)=>it.local ? String.fromCharCode(65+i) : '').filter(Boolean);
+  if(loc.length) p.push(`lançamento ${loc.join(' e ')} em rota de carregamento com valor de viagem`);
   return p.join(' · ');
 }
 let CF_ALVO = null;
@@ -663,11 +666,12 @@ function renderConfrontos(){
     ['CT-e em confronto', cs.length, `${cs.reduce((a,c)=>a+c.itens.length,0)} lançamentos`, ''],
     ['Mesmo motorista', tot(c=>c.mesmo), `${tot(c=>!c.mesmo)} entre motoristas diferentes`, 'k1'],
     ['Mesmo trecho', tot(c=>c.trecho), `${tot(c=>!c.trecho)} com trechos diferentes`, 'k2'],
+    ['Com rota de carregamento', tot(c=>c.local), 'um dos lançamentos é rota local com valor de viagem', 'k1'],
     ['Frete repetido', 'R$ '+compact(cs.reduce((a,c)=>a+c.frete-Math.max(...c.itens.map(it=>it.x.frete)),0)), 'valor que aparece a mais nas duplicidades', 'k3'],
     ['Bônus de viagem envolvido', 'R$ '+brl(cs.reduce((a,c)=>a+c.bonus,0)), 'soma do bônus pago nos lançamentos em confronto', 'k4']
   ].map(([l,v,s,c])=>`<div class="kpi ${c}"><div class="lab">${l}</div><div class="val"><span class="num">${v}</span></div><div class="sub">${s}</div></div>`).join('');
   const q = document.getElementById('cf-q').value.trim().toLowerCase(), f = document.getElementById('cf-f').value;
-  const vis = cs.filter(c=> (f==='todos' || (f==='mesmo'&&c.mesmo) || (f==='entre'&&!c.mesmo) || (f==='trecho'&&c.trecho) || (f==='outro'&&!c.trecho))
+  const vis = cs.filter(c=> (f==='todos' || (f==='mesmo'&&c.mesmo) || (f==='entre'&&!c.mesmo) || (f==='trecho'&&c.trecho) || (f==='outro'&&!c.trecho) || (f==='local'&&c.local))
     && (!q || c.cte.toLowerCase().includes(q) || c.itens.some(it=>it.nome.toLowerCase().includes(q)||it.cod.includes(q)||it.x.doc.toLowerCase().includes(q))));
   const letra = i => String.fromCharCode(65+i);
   const fmt = (k,v,it)=> k==='cod' ? `${esc(it.nome)} <span class="gtag num">${it.cod}</span>` : CF_MOEDA.has(k) ? 'R$ '+brl(v) : esc(v===''?'—':v);
@@ -678,11 +682,12 @@ function renderConfrontos(){
         <div class="bd">
           <span class="flag ${c.mesmo?'alerta':'info'}">${c.mesmo?'mesmo motorista':'entre motoristas'}</span>
           <span class="flag ${c.trecho?'alerta':'info'}">${c.trecho?'mesmo trecho':'trechos diferentes'}</span>
+          ${c.local?'<span class="flag alerta">rota de carregamento</span>':''}
         </div>
         <div class="vv num">frete R$ ${brl(c.frete)} · bônus R$ ${brl(c.bonus)} · VG ${c.vg}</div>
       </div>
       <div style="overflow-x:auto"><table class="cf-t">
-        <thead><tr><th>Campo</th>${c.itens.map((it,i)=>`<th>Lançamento ${letra(i)} · <button data-cod="${it.cod}" title="Abrir a ficha do motorista">${esc(it.nome.split(' ')[0])} ${it.cod}</button></th>`).join('')}</tr></thead>
+        <thead><tr><th>Campo</th>${c.itens.map((it,i)=>`<th>Lançamento ${letra(i)} · <button data-cod="${it.cod}" title="Abrir a ficha do motorista">${esc(it.nome.split(' ')[0])} ${it.cod}</button>${it.local?' · <span style="color:#F4D38D">rota de carregamento</span>':''}</th>`).join('')}</tr></thead>
         <tbody>${CF_CAMPOS.map(([kk,l])=>`<tr class="${c.difs.includes(kk)?'dif':''}"><th>${l}</th>${c.itens.map(it=>
           `<td class="${CF_MOEDA.has(kk)||['doc','data','chegada','container','rv','vg','lonaq'].includes(kk)?'num':''}">${fmt(kk, kk==='cod'?it.cod:it.x[kk], it)}</td>`).join('')}</tr>`).join('')}</tbody>
       </table></div>

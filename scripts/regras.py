@@ -9,6 +9,7 @@ REGRAS (id, nível, título, descrição) e devolver as ocorrências em `verific
 Níveis: 'alerta' (precisa de conferência) e 'info' (situação conhecida, só registro).
 """
 import json
+import re
 import sys
 from collections import defaultdict
 from datetime import datetime
@@ -20,11 +21,19 @@ RAIZ = Path(__file__).resolve().parent.parent
 TAXAS_VIAGEM = (1.75, 1.85, 2.05)   # bônus de viagem em % do frete, usuais em set/2026
 VALORES_LONA = (30.0, 35.0)         # R$ por lona
 CTE_SEM_NUMERO = '00--000000'       # lançamentos de evento (E:)
+# Rotas locais: são carregamento, não viagem — não podem ter valor de viagem (regra
+# informada pelo usuário em out/2026). Pares sem ordem: vale nos dois sentidos.
+ROTAS_CARREGAMENTO = [('MACHADO', 'MACHADO'), ('MACHADO', 'POUSO ALEGRE'), ('MACHADO', 'VARGINHA')]
+_ROTAS_CARREG = {frozenset(r) for r in ROTAS_CARREGAMENTO}
 
 REGRAS = [
     dict(id='CTE_FRETE_DUP', curto='CT-e duplicado', nivel='alerta', titulo='CT-e com frete em mais de um lançamento',
          descricao='O mesmo CT-e aparece com frete em dois ou mais lançamentos (do mesmo motorista ou de '
                    'outro) e cada um gerou bônus de viagem. Possível frete e bônus contados em dobro.'),
+    dict(id='ROTA_CARREGAMENTO', curto='Rota de carregamento', nivel='alerta',
+         titulo='Valor de viagem em rota de carregamento',
+         descricao='Rotas ' + ', '.join(f'{a.title()} x {b.title()}' for a, b in ROTAS_CARREGAMENTO) +
+                   ' (nos dois sentidos) são carregamento e não podem ter valor de viagem.'),
     dict(id='RV_FERIAS', curto='RV férias', nivel='alerta', titulo='Viagem com Nº RV "FERIAS"',
          descricao='Lançamento com o Nº RV marcado como FERIAS: motorista em férias com viagem lançada.'),
     dict(id='TAXA_VIAGEM', curto='Taxa atípica', nivel='alerta', titulo='Bônus de viagem fora das taxas usuais',
@@ -62,6 +71,17 @@ def carregar(mes):
     campos = d['campos']
     movs = {cod: [dict(zip(campos, r)) for r in ls] for cod, ls in d['motoristas'].items()}
     return d, movs
+
+
+def cidades(od):
+    """'MACHADO/MG x POUSO ALEGRE/MG' -> ('MACHADO', 'POUSO ALEGRE'); None se não houver trecho."""
+    p = [re.sub(r'/[A-Z]{2}$', '', x.strip()) for x in re.split(r'\s+x\s+', od or '')]
+    return tuple(p) if len(p) == 2 and all(p) else None
+
+
+def rota_carregamento(od):
+    c = cidades(od)
+    return bool(c) and frozenset(c) in _ROTAS_CARREG
 
 
 def indice_cte(movs):
@@ -108,6 +128,9 @@ def verificar(mes):
             if x['frete'] > 0 and outros:
                 marca(cod, i, 'CTE_FRETE_DUP', 'CT-e ' + x['cte'] + ' também em ' + '; '.join(
                     f'{c} doc. {o["doc"]} (frete R$ {brl(o["frete"])}, bônus R$ {brl(o["viagem"])})' for c, _, o in outros))
+            if x['viagem'] > 0 and rota_carregamento(x['od']):
+                marca(cod, i, 'ROTA_CARREGAMENTO', f'{x["od"]} com bônus de viagem R$ {brl(x["viagem"])}'
+                      + (' e contada como viagem (VG 1)' if x['vg'] else '') + ' — deveria ser carregamento')
             if x['rv'] == 'FERIAS':
                 marca(cod, i, 'RV_FERIAS', f'Nº RV "FERIAS" com frete R$ {brl(x["frete"])} e bônus R$ {brl(x["viagem"])}')
             if x['frete'] > 0 and x['viagem'] > 0:
