@@ -142,6 +142,19 @@ conferido com `scripts/conferir_xlsx.py`. Traz os mesmos lançamentos e o
   e bônus contados em dobro — conferir.
 - **Nº RV "FERIAS" — 5 lançamentos:** 0228 EDUARDO JOSE DA SILVA (2 linhas, frete
   R$ 13.092,02, bônus R$ 229,11) e 0629 FLAVIANO APARECIDO DE LIMA (3 linhas).
+- **Apuração de pagamento indevido de viagem — 11 motoristas, 15 lançamentos:**
+  bônus de viagem pago R$ 1.488,56, carregamento devido R$ 350,00 (R$ 25,00 × 14),
+  **a recuperar R$ 1.138,56**; 12 viagens contadas a mais (VG). Inclui a ordem
+  cancelada paga do 0757 DENILSON (CT-e 05-1-018855, doc. 5-001-036477, R$ 138,38): o
+  usuário informou que a ordem cancelada não entra na contagem nem no pagamento; a
+  contagem confere (VG 0), mas o PDF mostra o bônus pago nas duas ordens e o resumo do
+  0757 (R$ 1.819,39) soma as duas.
+- **Valor de viagem em rota de carregamento (regra do usuário) — 14 lançamentos, 10
+  motoristas, R$ 1.350,18 de bônus de viagem**, 12 deles também contados como viagem
+  (VG 1): 0039, 0251 (2), 0304 (2), 0554, 0606 (2), 0720, 0765, 0900, 0922 (2) e 0923.
+  Em 7 dos 20 CT-e duplicados, um dos lançamentos é essa perna local com valor de
+  viagem e o outro é a viagem real (Machado → Santos) — a regra explica boa parte das
+  duplicidades.
 - **Bônus de viagem fora das taxas usuais (1,75 / 1,85 / 2,05%):** 0765, doc.
   1-001-077226, 2,16%.
 - **Valor de lona fora do padrão (R$ 30 / R$ 35):** 0642 (R$ 15,00 por 1 lona),

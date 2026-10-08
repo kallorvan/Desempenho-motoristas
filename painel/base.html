@@ -52,7 +52,9 @@ h1{font-size:clamp(20px,3vw,27px);line-height:1.1;margin:0;font-weight:800;lette
 .period .dot{width:7px;height:7px;border-radius:50%;background:var(--coral)}
 
 /* abas */
-nav.tabs{max-width:var(--maxw);margin:0 auto;padding:16px 28px 0;display:flex;gap:2px}
+nav.tabs{max-width:var(--maxw);margin:0 auto;padding:16px 28px 0;display:flex;gap:2px;overflow-x:auto;scrollbar-width:none}
+nav.tabs::-webkit-scrollbar{display:none}
+.tab{white-space:nowrap}
 .tab{appearance:none;border:0;background:transparent;cursor:pointer;font-family:inherit;
   font-size:13px;font-weight:600;color:var(--muted);padding:10px 16px 12px;position:relative;letter-spacing:.01em}
 .tab:hover{color:var(--ink)}
@@ -253,6 +255,55 @@ footer{margin-top:34px;font-size:11px;color:var(--muted);line-height:1.6;border-
 .tagx.entrou{background:rgba(30,142,90,.13);color:#1E8E5A}
 .tagx.fora{background:rgba(244,211,141,.45);color:#6B4E0E}
 .tagx.alerta{background:rgba(221,70,99,.13);color:#B3243F}
+.rel-tools{gap:10px}
+.pi-call{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:10px 18px;padding:14px 18px;
+  background:var(--card);border:1px solid var(--line);border-left:4px solid var(--coral);border-radius:var(--r)}
+.pi-call .t{font-size:13px;font-weight:700} .pi-call .s{font-size:12px;color:var(--ink2);margin-top:3px}
+.pi-call .v{font-size:20px;font-weight:700;color:#B3243F;white-space:nowrap}
+/* pagamento indevido */
+.ind-kpi{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:1px;background:var(--line);border-bottom:1px solid var(--line)}
+.ind-kpi div{background:var(--card);padding:13px 16px}
+.ind-kpi .lab{font-size:10px;letter-spacing:.11em;text-transform:uppercase;color:var(--muted);font-weight:600;margin-bottom:5px}
+.ind-kpi .val{font-size:19px;font-weight:600}
+.ind-kpi .val.rec{color:#B3243F}
+.ind-t{width:100%;min-width:760px;border-collapse:collapse;font-size:12.5px}
+.ind-t th{background:#F6F7FB;color:var(--muted);font-size:10px;letter-spacing:.08em;text-transform:uppercase;font-weight:700;padding:9px 12px;text-align:right;white-space:nowrap}
+.ind-t th:nth-child(-n+2){text-align:left}
+.ind-t td{padding:10px 12px;border-top:1px solid var(--line);text-align:right;vertical-align:top;white-space:nowrap}
+.ind-t td:nth-child(-n+2){text-align:left}
+.ind-t td.rec{font-weight:700;color:#B3243F}
+.ind-t tbody tr{cursor:pointer} .ind-t tbody tr:hover{background:#F6F7FB} .ind-t tbody tr:hover .nm{color:var(--coral)}
+.ind-t .nm{font-weight:600}
+.ind-t .det{display:block;font-size:11px;color:var(--muted);margin-top:3px;line-height:1.5}
+.ind-t .det span{display:block;white-space:nowrap}
+.ind-t .det span.ids{margin-bottom:5px;color:var(--ink2)} .ind-t .det span.ids b{font-weight:600}
+.ind-t tfoot td{font-weight:800;border-top:2px solid var(--ink);background:#F6F7FB}
+/* confrontos A × B */
+.cf{background:var(--card);border:1px solid var(--line);border-radius:var(--r);margin-bottom:14px;overflow:hidden}
+.cf.alvo{outline:3px solid var(--coral);outline-offset:-1px}
+.cf-h{display:flex;flex-wrap:wrap;gap:8px 14px;align-items:center;justify-content:space-between;padding:12px 16px;border-bottom:1px solid var(--line);background:#F6F7FB}
+.cf-h .ct{font-size:13px;font-weight:800;letter-spacing:.01em}
+.cf-h .bd{display:flex;flex-wrap:wrap;gap:6px}
+.cf-h .vv{font-size:12px;font-weight:600;white-space:nowrap}
+.cf-t{width:100%;border-collapse:collapse;font-size:12px;min-width:0;background:var(--card)}
+.cf-t th,.cf-t td{padding:7px 12px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}
+.cf-t tr:last-child td,.cf-t tr:last-child th{border-bottom:0}
+.cf-t thead th{position:static;background:var(--ink);color:#fff;font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;cursor:default}
+.cf-t thead th button{appearance:none;border:0;background:none;color:#fff;font:inherit;cursor:pointer;padding:0;text-align:left;text-decoration:underline;text-underline-offset:3px}
+.cf-t tbody th{width:150px;font-size:10.5px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.06em;white-space:nowrap}
+.cf-t td{width:calc((100% - 150px)/2)}
+.cf-t tr.dif td{background:rgba(221,70,99,.07);font-weight:700;color:#8E1C33}
+.cf-t tr.dif th::after{content:" ≠";color:var(--coral)}
+.cf-t td.num{font-family:'IBM Plex Mono',ui-monospace,monospace}
+.cf-foot{padding:9px 16px;font-size:11.5px;color:var(--ink2);border-top:1px solid var(--line);background:#FBFBFD}
+.link{appearance:none;border:0;background:none;padding:0;font:inherit;color:var(--coral);cursor:pointer;text-decoration:underline;text-underline-offset:2px}
+@media (max-width:640px){.cf-t tbody th{width:96px;white-space:normal}.cf-t th,.cf-t td{padding:6px 8px}}
+.rel-lab{font-size:12px;font-weight:700;color:var(--ink)}
+.rel-chk{font-size:12px;color:var(--ink2);display:inline-flex;gap:6px;align-items:center;cursor:pointer}
+.rel-btn{background:var(--ink);border-color:var(--ink);color:#fff;padding:8px 14px}
+.rel-btn:hover{background:var(--ink2);color:#fff}
+.rel-btn:disabled{opacity:.5;cursor:default}
+.rel-msg{font-size:11.5px;color:var(--muted)}
 /* movimentações do motorista (como no PDF) */
 .mov table{min-width:1240px;font-size:11.5px}
 .mov thead th{cursor:default;font-size:10px;padding:9px 9px}
@@ -342,6 +393,8 @@ footer{margin-top:34px;font-size:11px;color:var(--muted);line-height:1.6;border-
     <button class="tab" role="tab" id="tab-geral" aria-selected="true" aria-controls="v-geral">Visão geral</button>
     <button class="tab" role="tab" id="tab-ind" aria-selected="false" aria-controls="v-ind">Por motorista</button>
     <button class="tab" role="tab" id="tab-evo" aria-selected="false" aria-controls="v-evo">Evolução</button>
+    <button class="tab" role="tab" id="tab-pi" aria-selected="false" aria-controls="v-pi">Pagamento indevido</button>
+    <button class="tab" role="tab" id="tab-conf" aria-selected="false" aria-controls="v-conf">Confrontos</button>
   </nav>
 </header>
 
@@ -387,8 +440,17 @@ footer{margin-top:34px;font-size:11px;color:var(--muted);line-height:1.6;border-
       <div class="card pad" id="fora"></div>
     </div>
 
+    <div class="sec" id="pi-callout"></div>
+
     <div class="sec">
       <div class="sec-h"><h2>Verificações das movimentações</h2><span class="sec-note" id="verif-note"></span></div>
+      <div class="tools rel-tools">
+        <label for="rel-per" class="rel-lab">Relatório de verificações</label>
+        <select id="rel-per" aria-label="Período do relatório"></select>
+        <label class="rel-chk"><input type="checkbox" id="rel-info" checked> incluir informativos</label>
+        <button class="chip rel-btn" id="rel-btn" type="button">Baixar relatório (.xlsx)</button>
+        <span class="rel-msg" id="rel-msg" role="status"></span>
+      </div>
       <div class="card" id="verif"></div>
     </div>
 
@@ -530,6 +592,40 @@ footer{margin-top:34px;font-size:11px;color:var(--muted);line-height:1.6;border-
       </div>
       <div class="card ev-list" id="ev-list"></div>
       <div class="tbl-foot" id="ev-foot"></div>
+    </div>
+  </section>
+
+  <section id="v-pi" role="tabpanel" aria-labelledby="tab-pi" class="hidden">
+    <div class="sec" style="margin-top:22px">
+      <div class="sec-h"><h2>Pagamento indevido de viagem</h2><span class="sec-note" id="ind-note"></span></div>
+      <div class="tools rel-tools">
+        <span class="rel-lab" id="pi-per"></span>
+        <button class="chip rel-btn" id="pi-btn" type="button">Baixar apuração (.xlsx)</button>
+        <span class="rel-msg" id="pi-msg" role="status"></span>
+      </div>
+      <div class="card" id="indevido"></div>
+      <div class="tbl-foot" id="pi-foot"></div>
+    </div>
+  </section>
+
+  <section id="v-conf" role="tabpanel" aria-labelledby="tab-conf" class="hidden">
+    <div class="sec" style="margin-top:22px">
+      <div class="sec-h"><h2>Confronto de lançamentos duplicados</h2><span class="sec-note" id="cf-note"></span></div>
+      <div class="kpis" id="cf-kpis" style="margin-top:0"></div>
+    </div>
+    <div class="sec">
+      <div class="tools">
+        <input type="search" id="cf-q" placeholder="Buscar por motorista, código, CT-e ou documento…" aria-label="Buscar confronto">
+        <select id="cf-f" aria-label="Filtrar confrontos">
+          <option value="todos">Todos os confrontos</option>
+          <option value="mesmo">Mesmo motorista</option>
+          <option value="entre">Entre motoristas</option>
+          <option value="trecho">Mesmo trecho</option>
+          <option value="outro">Trechos diferentes</option>
+          <option value="local">Com rota de carregamento</option>
+        </select>
+      </div>
+      <div id="cf-list"></div>
     </div>
   </section>
 

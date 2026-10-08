@@ -9,6 +9,7 @@ REGRAS (id, nível, título, descrição) e devolver as ocorrências em `verific
 Níveis: 'alerta' (precisa de conferência) e 'info' (situação conhecida, só registro).
 """
 import json
+import re
 import sys
 from collections import defaultdict
 from datetime import datetime
@@ -20,11 +21,30 @@ RAIZ = Path(__file__).resolve().parent.parent
 TAXAS_VIAGEM = (1.75, 1.85, 2.05)   # bônus de viagem em % do frete, usuais em set/2026
 VALORES_LONA = (30.0, 35.0)         # R$ por lona
 CTE_SEM_NUMERO = '00--000000'       # lançamentos de evento (E:)
+# Rotas locais: são carregamento, não viagem — não podem ter valor de viagem (regra
+# informada pelo usuário em out/2026). Pares sem ordem: vale nos dois sentidos.
+ROTAS_CARREGAMENTO = [('MACHADO', 'MACHADO'), ('MACHADO', 'POUSO ALEGRE'), ('MACHADO', 'VARGINHA')]
+_ROTAS_CARREG = {frozenset(r) for r in ROTAS_CARREGAMENTO}
+# Valor de carregamento devido no lugar do bônus de viagem nessas rotas (definido pelo
+# usuário em out/2026: R$ 25,00 por lançamento) — usado na apuração de pagamento indevido.
+VALOR_CARREGAMENTO = 25.0
 
 REGRAS = [
     dict(id='CTE_FRETE_DUP', curto='CT-e duplicado', nivel='alerta', titulo='CT-e com frete em mais de um lançamento',
          descricao='O mesmo CT-e aparece com frete em dois ou mais lançamentos (do mesmo motorista ou de '
                    'outro) e cada um gerou bônus de viagem. Possível frete e bônus contados em dobro.'),
+    dict(id='ROTA_CARREGAMENTO', curto='Rota de carregamento', nivel='alerta',
+         titulo='Valor de viagem em rota de carregamento',
+         descricao='Rotas ' + ', '.join(f'{a.title()} x {b.title()}' for a, b in ROTAS_CARREGAMENTO) +
+                   ' (nos dois sentidos) são carregamento e não podem ter valor de viagem.'),
+    dict(id='ORDEM_CANCELADA_PAGA', curto='Ordem cancelada paga', nivel='alerta',
+         titulo='Ordem cancelada com bônus de viagem pago',
+         descricao='Mesmo CT-e, mesmo trecho e mesmo motorista: uma das ordens foi cancelada (VG 0) e não '
+                   'deveria entrar no pagamento, mas tem bônus de viagem.'),
+    dict(id='ORDEM_CANCELADA', curto='Ordem cancelada', nivel='info',
+         titulo='Ordem cancelada (mesmo CT-e, trecho e motorista)',
+         descricao='Uma das ordens do mesmo CT-e, trecho e motorista foi cancelada e ficou fora da contagem '
+                   'de viagens e do pagamento.'),
     dict(id='RV_FERIAS', curto='RV férias', nivel='alerta', titulo='Viagem com Nº RV "FERIAS"',
          descricao='Lançamento com o Nº RV marcado como FERIAS: motorista em férias com viagem lançada.'),
     dict(id='TAXA_VIAGEM', curto='Taxa atípica', nivel='alerta', titulo='Bônus de viagem fora das taxas usuais',
@@ -64,6 +84,37 @@ def carregar(mes):
     return d, movs
 
 
+def cidades(od):
+    """'MACHADO/MG x POUSO ALEGRE/MG' -> ('MACHADO', 'POUSO ALEGRE'); None se não houver trecho."""
+    p = [re.sub(r'/[A-Z]{2}$', '', x.strip()) for x in re.split(r'\s+x\s+', od or '')]
+    return tuple(p) if len(p) == 2 and all(p) else None
+
+
+def rota_carregamento(od):
+    c = cidades(od)
+    return bool(c) and frozenset(c) in _ROTAS_CARREG
+
+
+def indice_cte(movs):
+    """CT-e -> [(cod, índice, lançamento)] dos lançamentos com frete (base da regra de duplicidade)."""
+    por_cte = defaultdict(list)
+    for cod, ls in movs.items():
+        for i, x in enumerate(ls):
+            if x['cte'] != CTE_SEM_NUMERO and x['frete'] > 0:
+                por_cte[x['cte']].append((cod, i, x))
+    return por_cte
+
+
+def grupos_duplicados(mes):
+    """[{cte, itens: [[cod, índice], ...]}] dos CT-e com frete em mais de um lançamento."""
+    carga = carregar(mes)
+    if carga is None:
+        return []
+    _, movs = carga
+    return [{'cte': cte, 'itens': [[c, i] for c, i, _ in v]}
+            for cte, v in indice_cte(movs).items() if len(v) > 1]
+
+
 def verificar(mes):
     """{cod: {índice do lançamento: [[id, mensagem], ...]}} ou None se o mês não tem lançamentos."""
     carga = carregar(mes)
@@ -76,11 +127,7 @@ def verificar(mes):
         oc[cod][i].append([rid, msg])
 
     # índice por CT-e para a regra de duplicidade
-    por_cte = defaultdict(list)
-    for cod, ls in movs.items():
-        for i, x in enumerate(ls):
-            if x['cte'] != CTE_SEM_NUMERO and x['frete'] > 0:
-                por_cte[x['cte']].append((cod, i, x))
+    por_cte = indice_cte(movs)
 
     per = d.get('periodo', {}).get('viagens')
     if per:
@@ -92,6 +139,17 @@ def verificar(mes):
             if x['frete'] > 0 and outros:
                 marca(cod, i, 'CTE_FRETE_DUP', 'CT-e ' + x['cte'] + ' também em ' + '; '.join(
                     f'{c} doc. {o["doc"]} (frete R$ {brl(o["frete"])}, bônus R$ {brl(o["viagem"])})' for c, _, o in outros))
+            for c2, i2, o in outros:
+                if c2 == cod and o['od'] == x['od'] and not x['vg'] and o['vg']:
+                    if x['viagem'] > 0:
+                        marca(cod, i, 'ORDEM_CANCELADA_PAGA', f'ordem cancelada (doc. {o["doc"]} é a ordem válida) '
+                                                              f'com bônus de viagem R$ {brl(x["viagem"])} pago')
+                    else:
+                        marca(cod, i, 'ORDEM_CANCELADA', f'ordem cancelada; válida: doc. {o["doc"]}')
+                    break
+            if x['viagem'] > 0 and rota_carregamento(x['od']):
+                marca(cod, i, 'ROTA_CARREGAMENTO', f'{x["od"]} com bônus de viagem R$ {brl(x["viagem"])}'
+                      + (' e contada como viagem (VG 1)' if x['vg'] else '') + ' — deveria ser carregamento')
             if x['rv'] == 'FERIAS':
                 marca(cod, i, 'RV_FERIAS', f'Nº RV "FERIAS" com frete R$ {brl(x["frete"])} e bônus R$ {brl(x["viagem"])}')
             if x['frete'] > 0 and x['viagem'] > 0:
@@ -123,6 +181,44 @@ def verificar(mes):
     return {cod: dict(v) for cod, v in oc.items()}
 
 
+def apuracao(mes, oc=None):
+    """Pagamento indevido de viagem, por motorista: bônus de viagem em rota de carregamento
+    (devido só o carregamento, VALOR_CARREGAMENTO por lançamento) e bônus de ordem cancelada
+    (nada devido). Devolve {'itens': [...], 'motoristas': [...], 'total': {...}}."""
+    carga = carregar(mes)
+    if carga is None:
+        return None
+    _, movs = carga
+    oc = verificar(mes) if oc is None else oc
+    itens = []
+    for cod, por_i in oc.items():
+        for i, marcas in por_i.items():
+            ids = {m[0] for m in marcas}
+            x = movs[cod][int(i)]
+            if 'ROTA_CARREGAMENTO' in ids:
+                motivo, devido = 'Viagem em rota de carregamento', VALOR_CARREGAMENTO
+            elif 'ORDEM_CANCELADA_PAGA' in ids:
+                motivo, devido = 'Ordem cancelada paga', 0.0
+            else:
+                continue
+            itens.append({'cod': cod, 'i': int(i), 'motivo': motivo, 'doc': x['doc'], 'data': x['data'],
+                          'od': x['od'], 'cte': x['cte'], 'container': x['container'], 'vg': x['vg'], 'pago': round(x['viagem'], 2),
+                          'devido': devido, 'recuperar': round(x['viagem'] - devido, 2)})
+    por = defaultdict(lambda: {'lanc': 0, 'pago': 0.0, 'devido': 0.0, 'recuperar': 0.0, 'vg': 0, 'motivos': set()})
+    for it in itens:
+        m = por[it['cod']]
+        m['lanc'] += 1
+        m['vg'] += it['vg']
+        m['motivos'].add(it['motivo'])
+        for k in ('pago', 'devido', 'recuperar'):
+            m[k] = round(m[k] + it[k], 2)
+    mots = sorted(({'cod': c, **{k: v for k, v in m.items() if k != 'motivos'}, 'motivos': sorted(m['motivos'])}
+                   for c, m in por.items()), key=lambda m: -m['recuperar'])
+    tot = {k: round(sum(m[k] for m in mots), 2) for k in ('pago', 'devido', 'recuperar')}
+    tot.update(lanc=len(itens), vg=sum(m['vg'] for m in mots), motoristas=len(mots))
+    return {'itens': itens, 'motoristas': mots, 'total': tot, 'valorCarregamento': VALOR_CARREGAMENTO}
+
+
 def resumo(oc):
     """Contagem por regra: lançamentos e motoristas."""
     out = {r['id']: {'lanc': 0, 'mot': set()} for r in REGRAS}
@@ -144,6 +240,14 @@ def main():
     nomes = {r['cod']: r['nome'] for r in json.loads((RAIZ / 'dados' / f'{mes}.json').read_text(encoding='utf8'))}
     _, movs = carregar(mes)
     res = resumo(oc)
+    ap = apuracao(mes, oc)
+    print(f'== Pagamento indevido de viagem — {mes} (carregamento devido: R$ {brl(VALOR_CARREGAMENTO)} por lançamento)')
+    for m in ap['motoristas']:
+        print(f'   {m["cod"]} {nomes.get(m["cod"], "")[:30]:30} {m["lanc"]} lanç. · pago R$ {brl(m["pago"]):>8} · '
+              f'devido R$ {brl(m["devido"]):>6} · a recuperar R$ {brl(m["recuperar"]):>8} · VG {m["vg"]} · {", ".join(m["motivos"])}')
+    t = ap['total']
+    print(f'   TOTAL: {t["motoristas"]} motoristas, {t["lanc"]} lançamentos · pago R$ {brl(t["pago"])} · '
+          f'devido R$ {brl(t["devido"])} · a recuperar R$ {brl(t["recuperar"])} · VG {t["vg"]}\n')
     print(f'== Verificações das movimentações — {mes}')
     for nivel in ('alerta', 'info'):
         for r in (r for r in REGRAS if r['nivel'] == nivel):

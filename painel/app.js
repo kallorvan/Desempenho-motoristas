@@ -397,7 +397,8 @@ function renderMov(d){
       <td class="num">${x.vg}</td><td class="num">${x.lonaq}</td>
       <td class="num">${v(x.vira)}</td><td class="num">${v(x.carreg)}</td><td class="num">${v(x.lona)}</td><td class="num">${v(x.viagem)}</td>
     </tr>${f.length?`<tr class="sub ${nivelLinha(i)}"><td colspan="15"><div class="subin">${f.map(([id,msg])=>
-      `<span class="fi"><span class="flag ${REGRA[id].nivel}" title="${esc(REGRA[id].descricao)}">${REGRA[id].curto}</span><span class="fmsg">${esc(msg)}</span></span>`).join('')}</div></td></tr>`:''}`; }).join('');
+      `<span class="fi"><span class="flag ${REGRA[id].nivel}" title="${esc(REGRA[id].descricao)}">${REGRA[id].curto}</span><span class="fmsg">${esc(msg)}</span>${
+        id==='CTE_FRETE_DUP'?` <button class="link" data-cte="${esc(x.cte)}">ver lado a lado</button>`:''}</span>`).join('')}</div></td></tr>`:''}`; }).join('');
   const s = k => L.reduce((a,x)=>a+x[k],0);
  box.innerHTML = `<table><thead><tr>${H.map((h,i)=>`<th style="text-align:${[0,3,4,5].includes(i)?'left':'right'}">${h}</th>`).join('')}</tr></thead>
     <tbody>${rows || `<tr><td colspan="15" style="text-align:center;color:var(--muted);padding:20px">Nenhum lançamento com esse filtro.</td></tr>`}</tbody>
@@ -407,9 +408,396 @@ function renderMov(d){
   const dif = d.frete - s('frete');
   foot.innerHTML = `Frete usado no fechamento: R$ ${brl(d.frete)}${Math.abs(dif)>0.005?` — <strong>R$ ${brl(Math.abs(dif))} ${dif>0?'a mais':'a menos'} que a soma dos lançamentos</strong> (resumo do PDF)`:' — igual à soma dos lançamentos'} · bônus operacional: R$ ${brl(d.bonusOp)}.`;
 }
+document.getElementById('d-mov').addEventListener('click',e=>{
+  const b = e.target.closest('button[data-cte]'); if(b) abrirConfronto(b.dataset.cte);
+});
 document.getElementById('d-mov-tools').addEventListener('click',e=>{
   const b = e.target.closest('.chip'); if(!b) return;
   movFiltro = b.dataset.f; renderMov(ORDER[cur]);
+});
+
+/* ================= RELATÓRIO XLSX DAS VERIFICAÇÕES ================= */
+/* gerador mínimo de .xlsx (zip sem compressão + SpreadsheetML), sem biblioteca externa,
+   para o botão funcionar também com o HTML aberto direto do computador, sem internet */
+const XLSX_MIN = (()=>{
+  const enc = new TextEncoder();
+  const CRC = new Uint32Array(256).map((_,n)=>{ let c=n; for(let k=0;k<8;k++) c = c&1 ? 0xEDB88320^(c>>>1) : c>>>1; return c>>>0; });
+  const crc32 = b => { let c = 0xFFFFFFFF; for(let i=0;i<b.length;i++) c = CRC[(c^b[i])&255]^(c>>>8); return (c^0xFFFFFFFF)>>>0; };
+  function zip(files){
+    const parts = [], central = []; let off = 0;
+    const u16 = v => [v&255, v>>>8&255], u32 = v => [v&255, v>>>8&255, v>>>16&255, v>>>24&255];
+    for(const [name, text] of files){
+      const nm = enc.encode(name), data = enc.encode(text), c = crc32(data);
+      const head = [...u32(0x04034b50), ...u16(20), ...u16(0x0800), ...u16(0), ...u16(0), ...u16(0x21),
+        ...u32(c), ...u32(data.length), ...u32(data.length), ...u16(nm.length), ...u16(0)];
+      parts.push(new Uint8Array(head), nm, data);
+      central.push(new Uint8Array([...u32(0x02014b50), ...u16(20), ...u16(20), ...u16(0x0800), ...u16(0), ...u16(0), ...u16(0x21),
+        ...u32(c), ...u32(data.length), ...u32(data.length), ...u16(nm.length), ...u16(0), ...u16(0), ...u16(0), ...u16(0),
+        ...u32(0), ...u32(off)]), nm);
+      off += head.length + nm.length + data.length;
+    }
+    const csz = central.reduce((a,p)=>a+p.length,0);
+    const end = new Uint8Array([...u32(0x06054b50), ...u16(0), ...u16(0), ...u16(files.length), ...u16(files.length),
+      ...u32(csz), ...u32(off), ...u16(0)]);
+    return new Blob([...parts, ...central, end], {type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
+  }
+  const x = s => String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])).replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F]/g,'');
+  const col = i => { let s=''; i++; while(i){ const m=(i-1)%26; s=String.fromCharCode(65+m)+s; i=(i-m-1)/26; } return s; };
+  /* estilos: 0 normal · 1 cabeçalho · 2 moeda · 3 título · 4 alerta · 5 informativo · 6 nota · 7 inteiro */
+  const STYLES = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
+<numFmts count="1"><numFmt numFmtId="164" formatCode="#,##0.00"/></numFmts>
+<fonts count="5"><font><sz val="10"/><name val="Arial"/></font><font><b/><sz val="10"/><color rgb="FFFFFFFF"/><name val="Arial"/></font>
+<font><b/><sz val="13"/><color rgb="FF1C2543"/><name val="Arial"/></font><font><b/><sz val="10"/><color rgb="FFB3243F"/><name val="Arial"/></font>
+<font><i/><sz val="9"/><color rgb="FF767B8D"/><name val="Arial"/></font></fonts>
+<fills count="5"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill>
+<fill><patternFill patternType="solid"><fgColor rgb="FF1F3864"/></patternFill></fill>
+<fill><patternFill patternType="solid"><fgColor rgb="FFFBE3E8"/></patternFill></fill>
+<fill><patternFill patternType="solid"><fgColor rgb="FFFDF3DC"/></patternFill></fill></fills>
+<borders count="1"><border/></borders>
+<cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>
+<cellXfs count="8">
+<xf numFmtId="0" fontId="0" fillId="0" borderId="0"/>
+<xf numFmtId="0" fontId="1" fillId="2" borderId="0" applyFont="1" applyFill="1" applyAlignment="1"><alignment vertical="center" wrapText="1"/></xf>
+<xf numFmtId="164" fontId="0" fillId="0" borderId="0" applyNumberFormat="1"/>
+<xf numFmtId="0" fontId="2" fillId="0" borderId="0" applyFont="1"/>
+<xf numFmtId="0" fontId="3" fillId="3" borderId="0" applyFont="1" applyFill="1"/>
+<xf numFmtId="0" fontId="0" fillId="4" borderId="0" applyFill="1"/>
+<xf numFmtId="0" fontId="4" fillId="0" borderId="0" applyFont="1"/>
+<xf numFmtId="1" fontId="0" fillId="0" borderId="0" applyNumberFormat="1"/>
+</cellXfs><cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles></styleSheet>`;
+  /* sheet: {name, rows:[[valor|{v,s}]], widths:[n], header: índice da linha de cabeçalho (0-based) ou -1} */
+  function sheetXml(sh){
+    const rows = sh.rows.map((r,ri)=>`<row r="${ri+1}">${r.map((c,ci)=>{
+      if(c==null || c==='') return '';
+      const o = (typeof c==='object') ? c : {v:c};
+      const s = o.s ?? (ri===sh.header ? 1 : (typeof o.v==='number' ? 2 : 0));
+      const ref = col(ci)+(ri+1);
+      return typeof o.v==='number'
+        ? `<c r="${ref}" s="${s}"><v>${o.v}</v></c>`
+        : `<c r="${ref}" s="${s}" t="inlineStr"><is><t xml:space="preserve">${x(o.v)}</t></is></c>`;
+    }).join('')}</row>`).join('');
+    const ncol = Math.max(...sh.rows.map(r=>r.length));
+    const pane = sh.header>=0 ? `<sheetViews><sheetView workbookViewId="0"><pane ySplit="${sh.header+1}" topLeftCell="A${sh.header+2}" activePane="bottomLeft" state="frozen"/></sheetView></sheetViews>` : '';
+    const cols = sh.widths ? `<cols>${sh.widths.map((w,i)=>`<col min="${i+1}" max="${i+1}" width="${w}" customWidth="1"/>`).join('')}</cols>` : '';
+    const af = sh.header>=0 && sh.rows.length>sh.header+1 ? `<autoFilter ref="A${sh.header+1}:${col(ncol-1)}${sh.rows.length}"/>` : '';
+    return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">${pane}${cols}<sheetData>${rows}</sheetData>${af}</worksheet>`;
+  }
+  function build(sheets){
+    const ns = 'xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"';
+    const files = [
+      ['[Content_Types].xml', `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/>${sheets.map((_,i)=>`<Override PartName="/xl/worksheets/sheet${i+1}.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>`).join('')}</Types>`],
+      ['_rels/.rels', `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>`],
+      ['xl/workbook.xml', `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><workbook ${ns}><sheets>${sheets.map((s,i)=>`<sheet name="${x(s.name)}" sheetId="${i+1}" r:id="rId${i+1}"/>`).join('')}</sheets>${
+        sheets.some(s=>s.header>=0 && s.rows.length>s.header+1) ? `<definedNames>${sheets.map((s,i)=>s.header>=0 && s.rows.length>s.header+1 ? `<definedName name="_xlnm._FilterDatabase" localSheetId="${i}" hidden="1">'${x(s.name)}'!$A$${s.header+1}:$${col(Math.max(...s.rows.map(r=>r.length))-1)}$${s.rows.length}</definedName>` : '').join('')}</definedNames>` : ''}</workbook>`],
+      ['xl/_rels/workbook.xml.rels', `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">${sheets.map((_,i)=>`<Relationship Id="rId${i+1}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet${i+1}.xml"/>`).join('')}<Relationship Id="rId${sheets.length+1}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/></Relationships>`],
+      ['xl/styles.xml', STYLES],
+      ...sheets.map((s,i)=>[`xl/worksheets/sheet${i+1}.xml`, sheetXml(s)])
+    ];
+    return zip(files);
+  }
+  return {build};
+})();
+
+/* aba "Pagamento indevido" do xlsx: detalhe por lançamento, subtotal por motorista e total */
+function planilhaIndevido(meses){
+  /* Pagamento indevido: por motorista e o detalhe por lançamento */
+  const pi = [['Mês','Cód.','Motorista','Motivo','Documento','Data','Origem / Destino','CT-e','Container','VG','Bônus pago','Carregamento devido','A recuperar']];
+  const piTot = {pago:0, devido:0, recuperar:0, lanc:0, vg:0, mot:new Set()};
+  for(const m of meses){
+    const A = LANC[m].apur; if(!A) continue;
+    const nome = Object.fromEntries(DATASETS[m].map(d=>[d.cod,d.nome]));
+    for(const mo of A.motoristas){
+      for(const it of A.itens.filter(i=>i.cod===mo.cod)){
+        pi.push([mshort(m), it.cod, nome[it.cod]||'', it.motivo, it.doc, it.data, it.od, it.cte, it.container||'', {v:it.vg,s:7}, it.pago, it.devido, it.recuperar]);
+      }
+      pi.push([{v:mshort(m),s:6}, {v:mo.cod,s:6}, {v:`Subtotal ${nome[mo.cod]||mo.cod}`,s:6}, '', '', '', '', '', '', {v:mo.vg,s:7}, mo.pago, mo.devido, mo.recuperar]);
+      piTot.pago+=mo.pago; piTot.devido+=mo.devido; piTot.recuperar+=mo.recuperar; piTot.lanc+=mo.lanc; piTot.vg+=mo.vg; piTot.mot.add(m+'|'+mo.cod);
+    }
+  }
+  if(pi.length===1) pi.push(['', '', 'Nenhum pagamento indevido de viagem no período.']);
+  else pi.push([], [{v:'TOTAL',s:3}, '', `${piTot.mot.size} motorista(s) · ${piTot.lanc} lançamento(s)`, '', '', '', '', '', '', {v:piTot.vg,s:7},
+    Math.round(piTot.pago*100)/100, Math.round(piTot.devido*100)/100, Math.round(piTot.recuperar*100)/100],
+    [{v:`Carregamento devido: R$ ${brl(LANC[meses[0]].apur ? LANC[meses[0]].apur.valorCarregamento : 25)} por lançamento em rota de carregamento; ordem cancelada: nada devido.`, s:6}]);
+  return pi;
+}
+
+/* monta o relatório do período escolhido: Resumo · Ocorrências · Frete × lançamentos */
+function relatorioVerificacoes(meses, comInfo){
+  const nivelTxt = n => n==='alerta' ? 'Alerta' : 'Informativo';
+  const regrasUsadas = REGRAS.filter(r=>comInfo || r.nivel==='alerta');
+  const ordem = Object.fromEntries(REGRAS.map((r,i)=>[r.id,i]));
+  const per = meses.length===1 ? mlab(meses[0]) : `${mlab(meses[0])} a ${mlab(meses[meses.length-1])}`;
+  const agora = new Date().toLocaleString('pt-BR');
+  const L0 = meses.map(m=>LANC[m]).find(Boolean), campos = L0.campos;
+
+  /* ocorrências, uma linha por (lançamento, regra) */
+  const oc = [];
+  for(const m of meses){
+    const L = LANC[m], base = Object.fromEntries(DATASETS[m].map(d=>[d.cod,d]));
+    for(const [cod,porI] of Object.entries(L.flags)) for(const [i,fs] of Object.entries(porI)) for(const [id,msg] of fs){
+      const r = REGRA[id]; if(!comInfo && r.nivel!=='alerta') continue;
+      const x = Object.fromEntries(campos.map((c,k)=>[c, L.mot[cod][i][k]])), d = base[cod] || {};
+      oc.push({m, r, cod, d, x, msg});
+    }
+  }
+  oc.sort((a,b)=> (a.r.nivel===b.r.nivel?0:(a.r.nivel==='alerta'?-1:1)) || ordem[a.r.id]-ordem[b.r.id]
+    || a.m.localeCompare(b.m) || (a.d.nome||'').localeCompare(b.d.nome||'','pt-BR'));
+
+  /* Resumo */
+  const resumo = [
+    [{v:'Relatório de verificações das movimentações', s:3}],
+    [{v:`Período: ${per} · gerado em ${agora} · Tóliman Transportes / Grupo Dínamo`, s:6}],
+    [{v:`Alerta = precisa de conferência; Informativo = situação conhecida, só registro.${comInfo?'':' (informativos não incluídos)'}`, s:6}],
+    [],
+    ['Nível','Regra','Descrição', ...(meses.length>1?meses.map(mshort):[]), 'Lançamentos','Motoristas']
+  ];
+  for(const r of regrasUsadas){
+    const porMes = meses.map(m=>LANC[m].resumo[r.id].lanc);
+    const mot = new Set(oc.filter(o=>o.r.id===r.id).map(o=>o.m+'|'+o.cod)).size;
+    resumo.push([{v:nivelTxt(r.nivel), s:r.nivel==='alerta'?4:5}, r.titulo, r.descricao,
+      ...(meses.length>1?porMes.map(v=>({v,s:7})):[]), {v:porMes.reduce((a,b)=>a+b,0), s:7}, {v:mot, s:7}]);
+  }
+  const nAl = oc.filter(o=>o.r.nivel==='alerta').length, nIn = oc.length-nAl;
+  resumo.push([], ['Total de ocorrências', '', '', ...(meses.length>1?meses.map(()=>''):[]), {v:oc.length,s:7}],
+    [`${nAl} alerta(s)${comInfo?` · ${nIn} informativo(s)`:''}`]);
+
+  /* Ocorrências */
+  const H = ['Mês','Nível','Regra','Detalhe','Cód.','Motorista','Grupo','Tipo','Documento','Data','Chegada','Container','Cliente',
+    'Origem / Destino','T. Frete','CT-e','Nº RV','VG','Lona (qtd)','Vira','Carregamento','Lona (R$)','Viagem'];
+  const ocRows = [H, ...oc.map(o=>[mshort(o.m), {v:nivelTxt(o.r.nivel), s:o.r.nivel==='alerta'?4:5}, o.r.titulo, o.msg,
+    o.cod, o.d.nome||'', o.d.grupo||'', o.x.tipo, o.x.doc, o.x.data, o.x.chegada, o.x.container, o.x.cliente, o.x.od,
+    o.x.frete, o.x.cte, o.x.rv, {v:o.x.vg,s:7}, {v:o.x.lonaq,s:7}, o.x.vira, o.x.carreg, o.x.lona, o.x.viagem])];
+
+  /* Frete do fechamento × soma dos lançamentos, por motorista */
+  const fr = [['Mês','Cód.','Motorista','Frete no fechamento','Soma dos lançamentos','Diferença','Observação']];
+  for(const m of meses){
+    const L = LANC[m];
+    for(const d of DATASETS[m]){
+      const ls = L.mot[d.cod]; if(!ls) continue;
+      const s = Math.round(ls.reduce((a,r)=>a + r[campos.indexOf('frete')],0)*100)/100;
+      const dif = Math.round((d.frete - s)*100)/100;
+      if(Math.abs(dif)>0.005) fr.push([mshort(m), d.cod, d.nome, d.frete, s, dif, 'frete do resumo do PDF difere da soma das linhas']);
+    }
+  }
+  if(fr.length===1) fr.push(['', '', 'Nenhuma diferença no período.']);
+
+  /* Confronto lado a lado: uma linha por CT-e, lançamento A e B nas colunas */
+  const cfc = [['doc','Documento'],['data','Data'],['chegada','Chegada'],['container','Container'],['od','Origem / Destino'],
+               ['frete','T. Frete'],['rv','Nº RV'],['vg','VG'],['viagem','Bônus viagem']];
+  const nMax = Math.max(2, ...meses.flatMap(m=>confrontosDe(m).map(c=>c.itens.length)));
+  const cf = [['Mês','CT-e','Leitura','Campos que diferem',
+    ...Array.from({length:nMax},(_,i)=>{ const L = String.fromCharCode(65+i);
+      return [`${L} · Cód.`,`${L} · Motorista`, ...cfc.map(c=>`${L} · ${c[1]}`)]; }).flat()]];
+  for(const m of meses) for(const c of confrontosDe(m)){
+    cf.push([mshort(m), c.cte, cfLeitura(c), c.difs.map(d=>CF_CAMPOS.find(x=>x[0]===d)[1]).join(', ') || 'nenhum',
+      ...c.itens.flatMap(it=>[it.cod, it.nome, ...cfc.map(([k])=> ['vg'].includes(k) ? {v:it.x[k],s:7} : it.x[k])])]);
+  }
+  if(cf.length===1) cf.push(['', '', 'Nenhum CT-e com frete em mais de um lançamento no período.']);
+
+  const pi = planilhaIndevido(meses);
+
+  return XLSX_MIN.build([
+    {name:'Resumo', rows:resumo, header:4, widths:[13,44,90,...(meses.length>1?meses.map(()=>9):[]),13,12]},
+    {name:'Ocorrências', rows:ocRows, header:0, widths:[8,12,34,70,7,34,30,6,16,10,10,16,30,34,12,15,10,5,9,9,13,10,10]},
+    {name:'Pagamento indevido', rows:pi, header:0, widths:[8,7,34,30,16,10,34,15,16,5,13,19,13]},
+    {name:'Confronto CT-e', rows:cf, header:0, widths:[8,14,62,34, ...Array.from({length:nMax},()=>[7,32,15,10,10,15,32,12,10,5,12]).flat()]},
+    {name:'Frete x lançamentos', rows:fr, header:0, widths:[8,7,36,18,20,13,46]}
+  ]);
+}
+
+/* entrega do arquivo: no painel publicado pelo recurso de downloads da plataforma
+   (o visitante confirma); aberto direto do computador, download comum do navegador */
+let DOWNLOADS = null;
+if(window.claude && typeof window.claude.use==='function'){
+  window.claude.use('downloads').then(ns=>{ DOWNLOADS = ns; }).catch(()=>{});
+}
+async function salvarArquivo(nome, blob){
+  if(DOWNLOADS){
+    const r = await DOWNLOADS.save({filename:nome, data:blob});
+    return r.status;
+  }
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob); a.download = nome;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(()=>URL.revokeObjectURL(a.href), 4000);
+  return 'saved';
+}
+function renderRelControles(){
+  const sel = document.getElementById('rel-per');
+  const ms = MESES.filter(m=>LANC[m]);
+  const opts = ms.slice().reverse().map(m=>`<option value="${m}">${mlab(m)}</option>`);
+  if(ms.length>1) opts.push(`<option value="todos">Todos os meses com movimentações (${ms.length})</option>`);
+  sel.innerHTML = opts.join('') || '<option value="">Sem movimentações</option>';
+  sel.value = LANC[MES] ? MES : (ms[ms.length-1]||'');
+  document.getElementById('rel-btn').disabled = !ms.length;
+}
+document.getElementById('rel-btn').addEventListener('click', async ()=>{
+  const btn = document.getElementById('rel-btn'), msg = document.getElementById('rel-msg');
+  const v = document.getElementById('rel-per').value; if(!v) return;
+  const meses = v==='todos' ? MESES.filter(m=>LANC[m]) : [v];
+  const comInfo = document.getElementById('rel-info').checked;
+  const nome = `Verificacoes_Motoristas_${v==='todos' ? meses[0]+'_a_'+meses[meses.length-1] : v}.xlsx`;
+  btn.disabled = true; msg.textContent = 'Gerando…';
+  try{
+    const st = await salvarArquivo(nome, relatorioVerificacoes(meses, comInfo));
+    msg.textContent = st==='delivered' ? 'Relatório enviado.' : `Relatório gerado: ${nome}`;
+  }catch(e){
+    const c = e && e.code;
+    msg.textContent = c==='declined' ? 'Download cancelado.' : c==='rate_limited' ? 'Já há um download aguardando confirmação.'
+      : 'Não foi possível baixar o relatório nesta visualização.';
+  }finally{ btn.disabled = false; }
+});
+
+/* ================= CONFRONTOS (CT-e com frete em mais de um lançamento) ================= */
+const CF_CAMPOS = [
+  ['cod','Motorista'],['doc','Documento'],['tipo','Tipo'],['data','Data'],['chegada','Chegada'],['container','Container'],
+  ['cliente','Cliente'],['od','Origem / Destino'],['frete','T. Frete'],['rv','Nº RV'],['vg','VG (viagem contada)'],
+  ['lonaq','Lona (qtd)'],['vira','Vira'],['carreg','Carregamento'],['lona','Lona (R$)'],['viagem','Bônus de viagem']];
+const CF_MOEDA = new Set(['frete','vira','carreg','lona','viagem']);
+function confrontosDe(mes){
+  const L = LANC[mes]; if(!L) return [];
+  const nome = Object.fromEntries(DATASETS[mes].map(d=>[d.cod,d.nome]));
+  return L.dup.map(g=>{
+    const itens = g.itens.map(([cod,i])=>({cod, i, nome:nome[cod]||cod, x:Object.fromEntries(L.campos.map((c,k)=>[c, L.mot[cod][i][k]])),
+      local: ((L.flags[cod]||{})[i]||[]).some(f=>f[0]==='ROTA_CARREGAMENTO')}));
+    const difs = CF_CAMPOS.map(c=>c[0]).filter(k=>new Set(itens.map(it=> k==='cod' ? it.cod : it.x[k])).size>1);
+    const mesmo = new Set(itens.map(it=>it.cod)).size===1;
+    const trecho = new Set(itens.map(it=>it.x.od)).size===1;
+    return {cte:g.cte, itens, difs, mesmo, trecho, local: itens.some(it=>it.local),
+      frete: itens.reduce((a,it)=>a+it.x.frete,0), bonus: itens.reduce((a,it)=>a+it.x.viagem,0),
+      vg: itens.reduce((a,it)=>a+it.x.vg,0)};
+  }).sort((a,b)=> (b.mesmo-a.mesmo) || (b.trecho-a.trecho) || (b.local-a.local) || (b.frete-a.frete));
+}
+function cfLeitura(c){
+  const p = [];
+  p.push(c.mesmo ? 'Mesmo motorista' : 'Motoristas diferentes');
+  p.push(c.trecho ? 'mesmo trecho' : 'trechos diferentes');
+  if(c.difs.includes('container')) p.push('containers diferentes'); else if(c.itens[0].x.container) p.push('mesmo container');
+  if(!c.difs.includes('frete')) p.push('mesmo valor de frete');
+  if(!c.difs.includes('rv')) p.push('mesmo Nº RV');
+  const loc = c.itens.map((it,i)=>it.local ? String.fromCharCode(65+i) : '').filter(Boolean);
+  if(loc.length) p.push(`lançamento ${loc.join(' e ')} em rota de carregamento com valor de viagem`);
+  return p.join(' · ');
+}
+let CF_ALVO = null;
+function renderConfrontos(){
+  const L = LANC[MES], cs = confrontosDe(MES);
+  const note = document.getElementById('cf-note'), list = document.getElementById('cf-list'), k = document.getElementById('cf-kpis');
+  if(!L){ note.textContent=''; k.innerHTML=''; list.innerHTML = `<div class="card pad" style="color:var(--muted);font-size:12.5px">Movimentações detalhadas não disponíveis para ${mlab(MES)}.</div>`; return; }
+  note.textContent = `${mlab(MES)} · mesmo CT-e com frete em mais de um lançamento, comparado campo a campo · campos diferentes marcados com ≠`;
+  const tot = (f)=>cs.filter(f).length;
+  k.innerHTML = [
+    ['CT-e em confronto', cs.length, `${cs.reduce((a,c)=>a+c.itens.length,0)} lançamentos`, ''],
+    ['Mesmo motorista', tot(c=>c.mesmo), `${tot(c=>!c.mesmo)} entre motoristas diferentes`, 'k1'],
+    ['Mesmo trecho', tot(c=>c.trecho), `${tot(c=>!c.trecho)} com trechos diferentes`, 'k2'],
+    ['Com rota de carregamento', tot(c=>c.local), 'um dos lançamentos é rota local com valor de viagem', 'k1'],
+    ['Frete repetido', 'R$ '+compact(cs.reduce((a,c)=>a+c.frete-Math.max(...c.itens.map(it=>it.x.frete)),0)), 'valor que aparece a mais nas duplicidades', 'k3'],
+    ['Bônus de viagem envolvido', 'R$ '+brl(cs.reduce((a,c)=>a+c.bonus,0)), 'soma do bônus pago nos lançamentos em confronto', 'k4']
+  ].map(([l,v,s,c])=>`<div class="kpi ${c}"><div class="lab">${l}</div><div class="val"><span class="num">${v}</span></div><div class="sub">${s}</div></div>`).join('');
+  const q = document.getElementById('cf-q').value.trim().toLowerCase(), f = document.getElementById('cf-f').value;
+  const vis = cs.filter(c=> (f==='todos' || (f==='mesmo'&&c.mesmo) || (f==='entre'&&!c.mesmo) || (f==='trecho'&&c.trecho) || (f==='outro'&&!c.trecho) || (f==='local'&&c.local))
+    && (!q || c.cte.toLowerCase().includes(q) || c.itens.some(it=>it.nome.toLowerCase().includes(q)||it.cod.includes(q)||it.x.doc.toLowerCase().includes(q))));
+  const letra = i => String.fromCharCode(65+i);
+  const fmt = (k,v,it)=> k==='cod' ? `${esc(it.nome)} <span class="gtag num">${it.cod}</span>` : CF_MOEDA.has(k) ? 'R$ '+brl(v) : esc(v===''?'—':v);
+  list.innerHTML = vis.map(c=>`
+    <div class="cf" id="cf-${esc(c.cte)}">
+      <div class="cf-h">
+        <div><div class="ct num">CT-e ${esc(c.cte)}</div><div style="font-size:11.5px;color:var(--ink2);margin-top:3px">${cfLeitura(c)}</div></div>
+        <div class="bd">
+          <span class="flag ${c.mesmo?'alerta':'info'}">${c.mesmo?'mesmo motorista':'entre motoristas'}</span>
+          <span class="flag ${c.trecho?'alerta':'info'}">${c.trecho?'mesmo trecho':'trechos diferentes'}</span>
+          ${c.local?'<span class="flag alerta">rota de carregamento</span>':''}
+        </div>
+        <div class="vv num">frete R$ ${brl(c.frete)} · bônus R$ ${brl(c.bonus)} · VG ${c.vg}</div>
+      </div>
+      <div style="overflow-x:auto"><table class="cf-t">
+        <thead><tr><th>Campo</th>${c.itens.map((it,i)=>`<th>Lançamento ${letra(i)} · <button data-cod="${it.cod}" title="Abrir a ficha do motorista">${esc(it.nome.split(' ')[0])} ${it.cod}</button>${it.local?' · <span style="color:#F4D38D">rota de carregamento</span>':''}</th>`).join('')}</tr></thead>
+        <tbody>${CF_CAMPOS.map(([kk,l])=>`<tr class="${c.difs.includes(kk)?'dif':''}"><th>${l}</th>${c.itens.map(it=>
+          `<td class="${CF_MOEDA.has(kk)||['doc','data','chegada','container','rv','vg','lonaq'].includes(kk)?'num':''}">${fmt(kk, kk==='cod'?it.cod:it.x[kk], it)}</td>`).join('')}</tr>`).join('')}</tbody>
+      </table></div>
+      <div class="cf-foot">${c.difs.length ? `Diferem: ${c.difs.map(d=>CF_CAMPOS.find(x=>x[0]===d)[1]).join(', ')}.` : 'Todos os campos iguais.'}
+        ${c.vg>1 ? ` <strong>Viagem contada ${c.vg} vezes (VG).</strong>` : ''}</div>
+    </div>`).join('') || `<div class="card pad" style="color:var(--muted);font-size:12.5px">Nenhum confronto com esse filtro.</div>`;
+  if(CF_ALVO){
+    const el = document.getElementById('cf-'+CF_ALVO);
+    if(el){ el.classList.add('alvo'); setTimeout(()=>{ const y = el.getBoundingClientRect().top + scrollY - topHdr.offsetHeight - 12; scrollTo({top:y,behavior:'smooth'}); },60); }
+    CF_ALVO = null;
+  }
+}
+function abrirConfronto(cte){
+  document.getElementById('cf-q').value = ''; document.getElementById('cf-f').value = 'todos';
+  CF_ALVO = cte; setTab('tab-conf'); renderConfrontos();
+}
+document.getElementById('cf-q').addEventListener('input',renderConfrontos);
+document.getElementById('cf-f').addEventListener('change',renderConfrontos);
+document.getElementById('cf-list').addEventListener('click',e=>{
+  const b = e.target.closest('button[data-cod]'); if(b) openDriver(b.dataset.cod);
+});
+
+/* pagamento indevido de viagem (rota de carregamento e ordem cancelada paga) */
+function renderIndevido(){
+  const L = LANC[MES], box = document.getElementById('indevido'), note = document.getElementById('ind-note');
+  if(!L || !L.apur){ note.textContent=''; box.innerHTML = `<div class="pad" style="color:var(--muted);font-size:12.5px">Movimentações detalhadas não disponíveis para ${mlab(MES)}.</div>`; return; }
+  const A = L.apur, T0 = A.total, nome = Object.fromEntries(DATA.map(d=>[d.cod,d.nome]));
+  note.textContent = `viagem paga em rota de carregamento (devido R$ ${brl(A.valorCarregamento)} de carregamento por lançamento) e ordem cancelada paga`;
+  if(!A.motoristas.length){ box.innerHTML = `<div class="pad" style="color:var(--muted);font-size:12.5px">Nenhum pagamento indevido de viagem em ${mlab(MES)}.</div>`; return; }
+  const det = cod => A.itens.filter(i=>i.cod===cod).map(i=>`<span>${esc(i.doc)} · ${i.data} · ${esc(i.od)} · R$ ${brl(i.pago)}</span>`
+    + `<span class="ids">CT-e <b>${esc(i.cte)}</b> · Container <b>${esc(i.container||'—')}</b></span>`).join('');
+  box.innerHTML = `<div class="ind-kpi">
+      <div><div class="lab">Motoristas</div><div class="val num">${T0.motoristas}</div></div>
+      <div><div class="lab">Lançamentos</div><div class="val num">${T0.lanc}</div></div>
+      <div><div class="lab">Bônus de viagem pago</div><div class="val num">R$ ${brl(T0.pago)}</div></div>
+      <div><div class="lab">Carregamento devido</div><div class="val num">R$ ${brl(T0.devido)}</div></div>
+      <div><div class="lab">A recuperar</div><div class="val num rec">R$ ${brl(T0.recuperar)}</div></div>
+      <div><div class="lab">Viagens contadas a mais</div><div class="val num">${T0.vg}</div></div>
+    </div>
+    <div style="overflow-x:auto"><table class="ind-t">
+      <thead><tr><th>Motorista</th><th>Motivo</th><th>Lanç.</th><th>Bônus pago</th><th>Carregamento devido</th><th>A recuperar</th><th>VG</th></tr></thead>
+      <tbody>${A.motoristas.map(m=>`<tr data-cod="${m.cod}">
+        <td><span class="nm">${esc(nome[m.cod]||m.cod)}</span> <span class="gtag num">${m.cod}</span><span class="det num">${det(m.cod)}</span></td>
+        <td>${m.motivos.join(' · ')}</td><td class="num">${m.lanc}</td><td class="num">R$ ${brl(m.pago)}</td>
+        <td class="num">R$ ${brl(m.devido)}</td><td class="num rec">R$ ${brl(m.recuperar)}</td><td class="num">${m.vg}</td></tr>`).join('')}</tbody>
+      <tfoot><tr><td colspan="2">Total · ${T0.motoristas} motoristas</td><td class="num">${T0.lanc}</td><td class="num">R$ ${brl(T0.pago)}</td>
+        <td class="num">R$ ${brl(T0.devido)}</td><td class="num">R$ ${brl(T0.recuperar)}</td><td class="num">${T0.vg}</td></tr></tfoot>
+    </table></div>`;
+}
+function renderIndevidoCallout(){
+  const box = document.getElementById('pi-callout'), L = LANC[MES];
+  const T0 = L && L.apur ? L.apur.total : null;
+  document.getElementById('pi-per').textContent = mlab(MES);
+  document.getElementById('pi-btn').disabled = !T0;
+  document.getElementById('pi-foot').textContent = T0
+    ? `Bônus de viagem pago em rota de carregamento (${REGRA.ROTA_CARREGAMENTO ? REGRA.ROTA_CARREGAMENTO.descricao.replace(/ \(nos dois sentidos\).*$/,'') : ''}, nos dois sentidos) ou em ordem cancelada. Devido: R$ ${brl(L.apur.valorCarregamento)} de carregamento por lançamento em rota de carregamento; nada na ordem cancelada. Clique no motorista para abrir as movimentações.`
+    : '';
+  box.innerHTML = T0 && T0.motoristas ? `<div class="pi-call">
+      <div><div class="t">Pagamento indevido de viagem · ${T0.motoristas} motorista(s), ${T0.lanc} lançamento(s)</div>
+        <div class="s">Bônus pago R$ ${brl(T0.pago)} · carregamento devido R$ ${brl(T0.devido)} · ${T0.vg} viagem(ns) contada(s) a mais</div></div>
+      <div style="display:flex;align-items:center;gap:14px"><span class="v num">R$ ${brl(T0.recuperar)}</span>
+        <button class="chip rel-btn" type="button" id="pi-go">Ver apuração</button></div>
+    </div>` : '';
+}
+document.getElementById('pi-callout').addEventListener('click',e=>{ if(e.target.closest('#pi-go')) setTab('tab-pi'); });
+document.getElementById('pi-btn').addEventListener('click', async ()=>{
+  const btn = document.getElementById('pi-btn'), msg = document.getElementById('pi-msg');
+  if(!LANC[MES]) return;
+  const nome = `Pagamento_Indevido_Viagem_${MES}.xlsx`;
+  btn.disabled = true; msg.textContent = 'Gerando…';
+  try{
+    const blob = XLSX_MIN.build([{name:'Pagamento indevido', rows:planilhaIndevido([MES]), header:0,
+      widths:[8,7,34,30,16,10,34,15,16,5,13,19,13]}]);
+    const st = await salvarArquivo(nome, blob);
+    msg.textContent = st==='delivered' ? 'Apuração enviada.' : `Apuração gerada: ${nome}`;
+  }catch(e){
+    const c = e && e.code;
+    msg.textContent = c==='declined' ? 'Download cancelado.' : c==='rate_limited' ? 'Já há um download aguardando confirmação.'
+      : 'Não foi possível baixar nesta visualização.';
+  }finally{ btn.disabled = false; }
+});
+document.getElementById('indevido').addEventListener('click',e=>{
+  const tr = e.target.closest('tr[data-cod]'); if(!tr) return;
+  openDriver(tr.dataset.cod); setTimeout(()=>document.getElementById('d-mov-sec').scrollIntoView({behavior:'smooth'}),50);
 });
 
 /* resumo das verificações do mês (visão geral) */
@@ -423,19 +811,22 @@ function renderVerif(){
     const c = L.resumo[r.id];
     const casos = [];
     Object.entries(L.flags).forEach(([cod,porI])=>Object.entries(porI).forEach(([i,fs])=>fs.forEach(([id,msg])=>{
-      if(id===r.id){ const x = L.mot[cod][i]; casos.push({cod, doc:x[L.campos.indexOf('doc')], data:x[L.campos.indexOf('data')], msg}); }
+      if(id===r.id){ const x = L.mot[cod][i]; casos.push({cod, doc:x[L.campos.indexOf('doc')], data:x[L.campos.indexOf('data')], msg,
+        cte: id==='CTE_FRETE_DUP' ? x[L.campos.indexOf('cte')] : ''}); }
     })));
     casos.sort((a,b)=> (nome[a.cod]||'').localeCompare(nome[b.cod]||'','pt-BR'));
     return `<details class="vr ${c.lanc?'':'zero'}" ${c.lanc?'':'onclick="return false"'}>
       <summary><span class="flag ${r.nivel}">${r.nivel==='alerta'?'alerta':'info'}</span>
         <div><div class="vt">${r.titulo}</div><div class="vd">${r.descricao}</div></div>
         <div class="vc num">${c.lanc} lanç.<small>${c.mot} motorista(s)</small></div></summary>
-      ${c.lanc?`<div class="vlist">${casos.map(k=>`<button class="vli" data-cod="${k.cod}"><span class="vn">${nome[k.cod]||k.cod} <span class="gtag num">${k.cod}</span></span><span class="vdoc num">${k.doc} · ${k.data}</span><span class="vm">${esc(k.msg)}</span></button>`).join('')}</div>`:''}
+      ${c.lanc?`<div class="vlist">${casos.map(k=>`<button class="vli" data-cod="${k.cod}"${k.cte?` data-cte="${esc(k.cte)}" title="Abrir o confronto lado a lado"`:''}><span class="vn">${nome[k.cod]||k.cod} <span class="gtag num">${k.cod}</span></span><span class="vdoc num">${k.doc} · ${k.data}</span><span class="vm">${esc(k.msg)}</span></button>`).join('')}</div>`:''}
     </details>`;
   }).join('');
 }
 document.getElementById('verif').addEventListener('click',e=>{
-  const b = e.target.closest('.vli'); if(b){ openDriver(b.dataset.cod); setTimeout(()=>document.getElementById('d-mov-sec').scrollIntoView({behavior:'smooth'}),50); }
+  const b = e.target.closest('.vli'); if(!b) return;
+  if(b.dataset.cte){ abrirConfronto(b.dataset.cte); return; }
+  openDriver(b.dataset.cod); setTimeout(()=>document.getElementById('d-mov-sec').scrollIntoView({behavior:'smooth'}),50);
 });
 
 sel.addEventListener('change',()=>showDriver(ORDER.findIndex(d=>d.cod===sel.value)));
@@ -577,7 +968,7 @@ document.getElementById('ev-list').addEventListener('keydown',e=>{
 });
 
 /* ================= ABAS ================= */
-const TABS = {'tab-geral':'v-geral','tab-ind':'v-ind','tab-evo':'v-evo'};
+const TABS = {'tab-geral':'v-geral','tab-ind':'v-ind','tab-evo':'v-evo','tab-pi':'v-pi','tab-conf':'v-conf'};
 function setTab(id){
   Object.entries(TABS).forEach(([t,v])=>{
     document.getElementById(t).setAttribute('aria-selected', t===id);
@@ -657,7 +1048,7 @@ function renderMes(keepCod){
   ATIVOS = DATA.filter(d=>isAvaliado(d) && !isManobrista(d));
   calcRanks();
   document.getElementById('per-lab').innerHTML = `${mlab(MES)} · <strong>${DATA.length} motoristas</strong>`;
-  renderKPIs(); renderComposicao(); renderGrupos(); renderFora(); renderVerif(); renderRank(); renderTable();
+  renderKPIs(); renderComposicao(); renderGrupos(); renderFora(); renderIndevido(); renderIndevidoCallout(); renderVerif(); renderRelControles(); renderRank(); renderTable(); renderConfrontos();
   renderIndividual(keepCod);
 }
 renderMes();

@@ -58,10 +58,49 @@ truncado no PDF; no xlsx vem completo).
 As regras ficam em `scripts/regras.py` (lista `REGRAS` + função `verificar`) e rodam
 a cada build do painel — criar ou ajustar uma regra **não** exige reler o PDF.
 Nível `alerta` = precisa de conferência; `info` = situação conhecida, só registro.
-Os parâmetros (taxas usuais do bônus de viagem, valor por lona) estão no topo do
-arquivo. No painel: tabela de movimentações na ficha do motorista, com as
+Os parâmetros (taxas usuais do bônus de viagem, valor por lona, rotas de carregamento)
+estão no topo do arquivo.
+
+**Regras definidas pelo usuário:**
+- **Rotas de carregamento (out/2026):** Machado x Machado, Machado x Pouso Alegre e
+  Machado x Varginha, nos dois sentidos, são **carregamento** e não podem ter valor de
+  viagem (`ROTA_CARREGAMENTO`, alerta). A rota é comparada pelas cidades da coluna
+  Origem/Destino, sem a UF. Lista em `regras.ROTAS_CARREGAMENTO`.
+- **Ordem cancelada (out/2026):** mesmo CT-e + mesmo trecho + mesmo motorista = uma
+  das ordens foi cancelada (a de VG 0) e não deve entrar na contagem nem no
+  pagamento. Se a ordem cancelada tem bônus de viagem → `ORDEM_CANCELADA_PAGA`
+  (alerta); sem bônus → `ORDEM_CANCELADA` (info).
+- **Apuração de pagamento indevido de viagem** (`regras.apuracao`): por motorista,
+  bônus de viagem em rota de carregamento (devido só o carregamento,
+  `VALOR_CARREGAMENTO` = R$ 25,00 por lançamento, definido pelo usuário) e bônus de
+  ordem cancelada (nada devido). Mostra pago, devido, a recuperar e viagens contadas a
+  mais (VG), com documento, data, trecho, CT-e e container de cada lançamento.
+  No painel: aba própria **Pagamento indevido** (totais, tabela por motorista e botão
+  "Baixar apuração (.xlsx)" só com essa aba), com um resumo na Visão geral; no
+  relatório .xlsx: aba *Pagamento indevido*; na linha de comando: topo do relatório
+  do `regras.py`. No painel: tabela de movimentações na ficha do motorista, com as
 ocorrências logo abaixo de cada linha, e o resumo "Verificações das movimentações"
 na Visão geral. Meses sem o arquivo de lançamentos (jul e ago/2026) mostram aviso.
+
+**Relatório de verificações (.xlsx).** Botão no bloco "Verificações das movimentações"
+da Visão geral: escolhe o período (um mês com movimentações ou todos) e se inclui os
+informativos. O arquivo tem três abas — *Resumo* (contagem por regra), *Ocorrências*
+(uma linha por lançamento × regra, com todas as colunas do PDF e o detalhe) e
+*Frete x lançamentos* (motoristas cujo frete do fechamento difere da soma das linhas).
+O .xlsx é gerado no próprio navegador, sem biblioteca externa (funciona offline). No
+painel publicado, a entrega passa pelo recurso `downloads` da plataforma (o
+visitante confirma); por isso a publicação declara `capabilities: {downloads: true}`.
+
+**Aba Confrontos.** Para cada CT-e com frete em mais de um lançamento (regra
+`CTE_FRETE_DUP`, grupos em `regras.grupos_duplicados`), um quadro A × B campo a campo
+(motorista, documento, datas, container, cliente, trecho, frete, Nº RV, VG, lona,
+vira, carregamento, bônus), com os campos diferentes marcados com ≠ e uma leitura
+automática (mesmo motorista ou não, mesmo trecho ou não, mesmo container, mesmo Nº
+RV). Filtros por tipo e busca. Abre também pelo link "ver lado a lado" na ficha do
+motorista e pelos casos do bloco de verificações. O relatório .xlsx traz a mesma
+comparação na aba *Confronto CT-e* (uma linha por CT-e, A e B nas colunas).
+Em set/2026: 20 CT-e, todos com 2 lançamentos; 2 do mesmo motorista (0757, 0763),
+3 no mesmo trecho.
 
 ## Regras de validação (têm que fechar em 100% dos motoristas)
 
@@ -170,7 +209,9 @@ A planilha não muda — segue o modelo.
 
 Abas: **Visão geral** (KPIs, composição, grupos, ranking, tabela) · **Por
 motorista** (ficha individual, comparação com a frota, histórico mês a mês) ·
-**Evolução** (frota mês a mês e variação por motorista). Identidade visual
+**Evolução** (frota mês a mês e variação por motorista) · **Pagamento indevido**
+(apuração de viagem paga em rota de carregamento e ordem cancelada paga) ·
+**Confrontos** (CT-e duplicados lado a lado). Identidade visual
 Dínamo/Tóliman — navy `#1C2543`, coral `#DD4663`, mauve `#AE82B1`, areia `#F4D38D`.
 
 ## Gotchas técnicos
