@@ -13,6 +13,7 @@ from pathlib import Path
 RAIZ = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(RAIZ / 'scripts'))
 from comum import KM_MIN, avaliado, totais  # noqa: E402
+import regras  # noqa: E402
 
 MESES = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto',
          'Setembro', 'Outubro', 'Novembro', 'Dezembro']
@@ -26,7 +27,7 @@ def js(obj):
 
 def main():
     arquivos = sorted((RAIZ / 'dados').glob('[0-9][0-9][0-9][0-9]-[0-9][0-9].json'))
-    datasets, tots, mlabel, mshort = {}, {}, {}, {}
+    datasets, tots, mlabel, mshort, lanc = {}, {}, {}, {}, {}
     for f in arquivos:
         mes = f.stem
         rows = json.loads(f.read_text(encoding='utf8'))
@@ -38,13 +39,19 @@ def main():
         s = lambda k: round(sum(r[k] for r in fora), 2)  # noqa: E731
         tots[mes]['fora'] = {'n': len(fora), 'frete': s('frete'), 'bonusOp': s('bonusOp'),
                              'premTot': s('premTot'), 'bonif': s('bonif'), 'km': s('km')}
+        carga = regras.carregar(mes)
+        if carga:
+            d, _ = carga
+            oc = regras.verificar(mes)
+            lanc[mes] = {'campos': d['campos'], 'periodo': d['periodo'], 'mot': d['motoristas'],
+                         'flags': oc, 'resumo': regras.resumo(oc)}
         aaaa, mm = mes.split('-')
         nome = MESES[int(mm) - 1]
         mlabel[mes] = f'{nome} / {aaaa}'
         mshort[mes] = f'{nome[:3]}/{aaaa[2:]}'
 
     app = (RAIZ / 'painel' / 'app.js').read_text(encoding='utf8')
-    for k, v in (('__KM_MIN__', KM_MIN), ('__DATASETS__', datasets), ('__TOTAIS__', tots), ('__MLABEL__', mlabel), ('__MSHORT__', mshort)):
+    for k, v in (('__LANC__', lanc), ('__REGRAS__', regras.REGRAS), ('__KM_MIN__', KM_MIN), ('__DATASETS__', datasets), ('__TOTAIS__', tots), ('__MLABEL__', mlabel), ('__MSHORT__', mshort)):
         assert app.count(k) == 1, f'placeholder {k} deve aparecer uma vez em app.js'
         app = app.replace(k, js(v))
     base = (RAIZ / 'painel' / 'base.html').read_text(encoding='utf8')

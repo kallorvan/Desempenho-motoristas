@@ -45,6 +45,17 @@ const isManobrista = d => d.frete === 0;
 /* critério de avaliação: só quem rodou ao menos KM_MIN no mês entra nos rankings e
    nas comparações com a frota; os totais da frota continuam com todos (foi pago) */
 const KM_MIN = __KM_MIN__;
+
+/* movimentações do PDF (por mês, quando disponíveis) e verificações calculadas no build */
+const LANC = __LANC__;
+const REGRAS = __REGRAS__;
+const esc = t => String(t??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const REGRA = Object.fromEntries(REGRAS.map(r=>[r.id,r]));
+const movsDe = (mes,cod)=>{ const L = LANC[mes]; if(!L || !L.mot[cod]) return null;
+  return L.mot[cod].map(r=>Object.fromEntries(L.campos.map((c,i)=>[c,r[i]]))); };
+const flagsDe = (mes,cod)=> (LANC[mes] && LANC[mes].flags[cod]) || {};
+const nAlertas = (mes,cod)=> Object.values(flagsDe(mes,cod)).flat().filter(f=>REGRA[f[0]].nivel==='alerta').length;
+const tagAlerta = d => { const n = nAlertas(MES,d.cod); return n ? `<span class="tagx alerta">${n} alerta${n>1?'s':''} nas movimentações</span>` : ''; };
 const isAvaliado = d => d.km >= KM_MIN;
 const motivoFora = d => isManobrista(d) ? 'manobrista / sem frete' : (d.km <= 2 ? 'sem km apurado' : nf(d.km)+' km');
 let ATIVOS = DATA.filter(d=>isAvaliado(d) && !isManobrista(d));
@@ -189,7 +200,7 @@ document.getElementById('rank-ctl').addEventListener('click',e=>{
 /* tabela */
 const COLS = [
   {k:'cod',  l:'Cód.',      f:d=>`<span class="num">${d.cod}</span>`},
-  {k:'nome', l:'Motorista', f:d=>`<strong style="font-weight:600">${d.nome}</strong><br><span class="gtag"><span class="gdot" style="background:${gcol(d.grupo)}"></span>${short(d.grupo)}</span>${tagFora(d)}`},
+  {k:'nome', l:'Motorista', f:d=>`<strong style="font-weight:600">${d.nome}</strong><br><span class="gtag"><span class="gdot" style="background:${gcol(d.grupo)}"></span>${short(d.grupo)}</span>${tagFora(d)}${tagAlerta(d)}`},
   {k:'frete',l:'Frete (R$)',f:d=>`<span class="num">${brl(d.frete)}</span>`},
   {k:'bonif',l:'Bonif. (R$)',f:d=>`<span class="num">${brl(d.bonif)}</span>`},
   {k:'pctBF',l:'% Bonif./frete', f:d=>`<span class="num">${typeof d.pctBF==='number'?pct(d.pctBF,2):'<span style="color:var(--muted);font-size:11px">manobrista</span>'}</span>`},
@@ -288,7 +299,8 @@ function showDriver(i){
     rkF(d) ? `<span class="pill">Rank de frete <b>${rkF(d)} de ${DATA.filter(x=>isAvaliado(x)&&x.frete>0).length}</b></span>` : '',
     rkB(d) ? `<span class="pill">Rank de bonificação <b>${rkB(d)} de ${DATA.filter(x=>isAvaliado(x)&&x.bonif>0).length}</b></span>` : '',
     !isAvaliado(d) ? `<span class="pill warn">Fora do critério · ${motivoFora(d)} (mínimo ${nf(KM_MIN)} km) · sem ranking</span>` : '',
-    isManobrista(d) ? `<span class="pill warn">Sem frete faturado no período</span>` : ''
+    isManobrista(d) ? `<span class="pill warn">Sem frete faturado no período</span>` : '',
+    nAlertas(MES,d.cod) ? `<a class="pill warn" href="#d-mov-sec" style="color:#fff;text-decoration:none">${nAlertas(MES,d.cod)} alerta(s) nas movimentações ↓</a>` : ''
   ].filter(Boolean).join('');
 
   document.getElementById('d-frete').textContent = brl(d.frete);
@@ -352,7 +364,80 @@ function showDriver(i){
         ${dl!=null?`<span class="delta ${dl>=0?'up':'down'}">${sgn(dl)}</span>`:''}</div>
     </div>`;
   }).join('');
+  renderMov(d);
 }
+/* movimentações do motorista, na mesma disposição do PDF, com as verificações */
+let movFiltro = 'todas';
+function renderMov(d){
+  const L = movsDe(MES,d.cod), F = flagsDe(MES,d.cod);
+  const note = document.getElementById('d-mov-note'), box = document.getElementById('d-mov'),
+        tools = document.getElementById('d-mov-tools'), foot = document.getElementById('d-mov-foot');
+  if(!L){
+    note.textContent = ''; tools.innerHTML = ''; foot.textContent = '';
+    box.innerHTML = `<div style="padding:18px;color:var(--muted);font-size:12.5px">As movimentações detalhadas de ${mlab(MES)} não estão disponíveis — o PDF do mês não foi processado com o detalhe dos lançamentos.</div>`;
+    return;
+  }
+  const per = LANC[MES].periodo.viagens;
+  const nAl = Object.values(F).flat().filter(f=>REGRA[f[0]].nivel==='alerta').length;
+  const nIn = Object.values(F).flat().filter(f=>REGRA[f[0]].nivel==='info').length;
+  note.textContent = `${L.length} lançamentos${per?` · viagens de ${per[0]} a ${per[1]}`:''} · ${nAl} alerta(s) · ${nIn} informativo(s)`;
+  tools.innerHTML = ['todas','alerta','qualquer'].map(k=>`<button class="chip" data-f="${k}" aria-pressed="${movFiltro===k}">${
+    {todas:'Todos os lançamentos', alerta:'Só com alerta', qualquer:'Com qualquer verificação'}[k]}</button>`).join('');
+  const nivelLinha = i => { const f = F[i]||[]; return f.some(x=>REGRA[x[0]].nivel==='alerta') ? 'al' : (f.length ? 'inf' : ''); };
+  const idx = L.map((_,i)=>i).filter(i=> movFiltro==='todas' || (movFiltro==='alerta' ? nivelLinha(i)==='al' : (F[i]||[]).length));
+  const v = x => x ? brl(x) : '<span style="color:#B9BFD2">0,00</span>';
+  const H = ['Documento','Data','Chegada','Container','Cliente','Origem / Destino','T. Frete','CT-e','Nº RV','VG','Lona','Vira','Carregamento','Lona (R$)','Viagem'];
+  const rows = idx.map(i=>{ const x = L[i], f = F[i]||[];
+    return `<tr class="${nivelLinha(i)} ${f.length?'tem':''}">
+      <td class="l num"><span class="tp ${x.tipo}">${x.tipo}</span>${x.doc}</td>
+      <td class="num">${x.data}</td><td class="num dim">${x.chegada}</td>
+      <td class="l num dim">${x.container||''}</td>
+      <td class="l wrap">${esc(x.cliente)}</td><td class="l wrap">${esc(x.od)}</td>
+      <td class="num">${v(x.frete)}</td><td class="num dim">${x.cte}</td><td class="num ${/^\d+$/.test(x.rv)?'dim':''}">${x.rv}</td>
+      <td class="num">${x.vg}</td><td class="num">${x.lonaq}</td>
+      <td class="num">${v(x.vira)}</td><td class="num">${v(x.carreg)}</td><td class="num">${v(x.lona)}</td><td class="num">${v(x.viagem)}</td>
+    </tr>${f.length?`<tr class="sub ${nivelLinha(i)}"><td colspan="15"><div class="subin">${f.map(([id,msg])=>
+      `<span class="fi"><span class="flag ${REGRA[id].nivel}" title="${esc(REGRA[id].descricao)}">${REGRA[id].curto}</span><span class="fmsg">${esc(msg)}</span></span>`).join('')}</div></td></tr>`:''}`; }).join('');
+  const s = k => L.reduce((a,x)=>a+x[k],0);
+ box.innerHTML = `<table><thead><tr>${H.map((h,i)=>`<th style="text-align:${[0,3,4,5].includes(i)?'left':'right'}">${h}</th>`).join('')}</tr></thead>
+    <tbody>${rows || `<tr><td colspan="15" style="text-align:center;color:var(--muted);padding:20px">Nenhum lançamento com esse filtro.</td></tr>`}</tbody>
+    <tfoot><tr><td style="text-align:left" colspan="6">Soma dos ${L.length} lançamentos</td><td class="num">${brl(s('frete'))}</td><td></td><td></td>
+      <td class="num">${s('vg')}</td><td class="num">${s('lonaq')}</td><td class="num">${brl(s('vira'))}</td><td class="num">${brl(s('carreg'))}</td>
+      <td class="num">${brl(s('lona'))}</td><td class="num">${brl(s('viagem'))}</td></tr></tfoot></table>`;
+  const dif = d.frete - s('frete');
+  foot.innerHTML = `Frete usado no fechamento: R$ ${brl(d.frete)}${Math.abs(dif)>0.005?` — <strong>R$ ${brl(Math.abs(dif))} ${dif>0?'a mais':'a menos'} que a soma dos lançamentos</strong> (resumo do PDF)`:' — igual à soma dos lançamentos'} · bônus operacional: R$ ${brl(d.bonusOp)}.`;
+}
+document.getElementById('d-mov-tools').addEventListener('click',e=>{
+  const b = e.target.closest('.chip'); if(!b) return;
+  movFiltro = b.dataset.f; renderMov(ORDER[cur]);
+});
+
+/* resumo das verificações do mês (visão geral) */
+function renderVerif(){
+  const L = LANC[MES], box = document.getElementById('verif'), note = document.getElementById('verif-note');
+  if(!L){ note.textContent = ''; box.innerHTML = `<div class="pad" style="color:var(--muted);font-size:12.5px">Movimentações detalhadas não disponíveis para ${mlab(MES)}.</div>`; return; }
+  const nome = Object.fromEntries(DATA.map(d=>[d.cod,d.nome]));
+  const tot = REGRAS.filter(r=>r.nivel==='alerta').reduce((a,r)=>a+L.resumo[r.id].lanc,0);
+  note.textContent = `${tot} lançamento(s) com alerta · clique na regra para ver os casos`;
+  box.innerHTML = REGRAS.map(r=>{
+    const c = L.resumo[r.id];
+    const casos = [];
+    Object.entries(L.flags).forEach(([cod,porI])=>Object.entries(porI).forEach(([i,fs])=>fs.forEach(([id,msg])=>{
+      if(id===r.id){ const x = L.mot[cod][i]; casos.push({cod, doc:x[L.campos.indexOf('doc')], data:x[L.campos.indexOf('data')], msg}); }
+    })));
+    casos.sort((a,b)=> (nome[a.cod]||'').localeCompare(nome[b.cod]||'','pt-BR'));
+    return `<details class="vr ${c.lanc?'':'zero'}" ${c.lanc?'':'onclick="return false"'}>
+      <summary><span class="flag ${r.nivel}">${r.nivel==='alerta'?'alerta':'info'}</span>
+        <div><div class="vt">${r.titulo}</div><div class="vd">${r.descricao}</div></div>
+        <div class="vc num">${c.lanc} lanç.<small>${c.mot} motorista(s)</small></div></summary>
+      ${c.lanc?`<div class="vlist">${casos.map(k=>`<button class="vli" data-cod="${k.cod}"><span class="vn">${nome[k.cod]||k.cod} <span class="gtag num">${k.cod}</span></span><span class="vdoc num">${k.doc} · ${k.data}</span><span class="vm">${esc(k.msg)}</span></button>`).join('')}</div>`:''}
+    </details>`;
+  }).join('');
+}
+document.getElementById('verif').addEventListener('click',e=>{
+  const b = e.target.closest('.vli'); if(b){ openDriver(b.dataset.cod); setTimeout(()=>document.getElementById('d-mov-sec').scrollIntoView({behavior:'smooth'}),50); }
+});
+
 sel.addEventListener('change',()=>showDriver(ORDER.findIndex(d=>d.cod===sel.value)));
 document.getElementById('prev').addEventListener('click',()=>showDriver(cur-1));
 document.getElementById('next').addEventListener('click',()=>showDriver(cur+1));
@@ -572,7 +657,7 @@ function renderMes(keepCod){
   ATIVOS = DATA.filter(d=>isAvaliado(d) && !isManobrista(d));
   calcRanks();
   document.getElementById('per-lab').innerHTML = `${mlab(MES)} · <strong>${DATA.length} motoristas</strong>`;
-  renderKPIs(); renderComposicao(); renderGrupos(); renderFora(); renderRank(); renderTable();
+  renderKPIs(); renderComposicao(); renderGrupos(); renderFora(); renderVerif(); renderRank(); renderTable();
   renderIndividual(keepCod);
 }
 renderMes();

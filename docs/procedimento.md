@@ -42,7 +42,26 @@ o mesmo caminho de arquivo mantém a URL.
    até não sobrar nenhum erro.
 6. **Atualizar o painel**: `python3 scripts/3_painel.py` lê todo `dados/*.json`;
    revisar o rodapé de `painel/base.html` (fontes e notas do mês).
-7. **Registrar** um `docs/historico/AAAA-MM-extracao.md` com os achados do mês.
+7. **Rodar as verificações**: `python3 scripts/regras.py AAAA-MM` e levar os alertas ao
+   usuário junto com os achados do mês.
+8. **Registrar** um `docs/historico/AAAA-MM-extracao.md` com os achados do mês.
+
+## Movimentações e regras de verificação
+
+O `1_extrair.py` grava também `dados/lancamentos/AAAA-MM.json`: **todas** as
+movimentações do PDF, por motorista e na ordem do PDF (documento, data, chegada,
+container, cliente, origem/destino, frete, CT-e, Nº RV, VG, lona, vira,
+carregamento, lona R$, viagem) e o período do fechamento. Em set/2026 as 1.556
+linhas conferiram campo a campo com o export xlsx do Rodopar (o cliente vem
+truncado no PDF; no xlsx vem completo).
+
+As regras ficam em `scripts/regras.py` (lista `REGRAS` + função `verificar`) e rodam
+a cada build do painel — criar ou ajustar uma regra **não** exige reler o PDF.
+Nível `alerta` = precisa de conferência; `info` = situação conhecida, só registro.
+Os parâmetros (taxas usuais do bônus de viagem, valor por lona) estão no topo do
+arquivo. No painel: tabela de movimentações na ficha do motorista, com as
+ocorrências logo abaixo de cada linha, e o resumo "Verificações das movimentações"
+na Visão geral. Meses sem o arquivo de lançamentos (jul e ago/2026) mostram aviso.
 
 ## Regras de validação (têm que fechar em 100% dos motoristas)
 
