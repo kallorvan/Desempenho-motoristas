@@ -32,6 +32,11 @@ o mesmo caminho de arquivo mantém a URL.
    `python3 scripts/conferir_xlsx.py entrada/<export>.xlsx entrada/<arquivo>.pdf AAAA-MM`
    antes de fechar os achados: ele tem os valores sem arredondamento e separa
    divergência real da fonte de efeito do PDF (não traz o bloco de prêmio).
+   Se o Rodopar **reemitir o PDF de um mês já fechado**, comparar as versões com
+   `python3 scripts/comparar_versoes.py entrada/<pago>.pdf entrada/<novo>.pdf AAAA-MM`
+   → `saida/Comparativo_Versoes_PDF_MM_AAAA.xlsx` (abas Resumo, Por motorista com
+   paga × nova e acerto, Lançamentos campo a campo, Nº RV, x Apuração). O fechamento
+   segue na versão paga; o acerto vai para o mês seguinte se o usuário decidir.
 4. **Conferir contra os lançamentos** — somar as linhas de cada bloco e comparar
    com o resumo. Divergência aqui é achado, não erro de leitura: reportar e
    **manter o valor do resumo**, que é o oficial do fechamento. Exceção só com
@@ -68,12 +73,19 @@ estão no topo do arquivo.
   Origem/Destino, sem a UF. Lista em `regras.ROTAS_CARREGAMENTO`.
 - **Ordem cancelada (out/2026):** mesmo CT-e + mesmo trecho + mesmo motorista = uma
   das ordens foi cancelada (a de VG 0) e não deve entrar na contagem nem no
-  pagamento. Se a ordem cancelada tem bônus de viagem → `ORDEM_CANCELADA_PAGA`
-  (alerta); sem bônus → `ORDEM_CANCELADA` (info).
+  pagamento. **Tudo o que a linha cancelada teve de pagamento é estornado** — viagem,
+  lona, vira e carregamento (ex.: 0757 set/2026, viagem R$ 138,38 + lona R$ 60,00).
+  Só conta o que entrou para pagamento: a rubrica tem que estar no `RESUMO DO BÔNUS`
+  do motorista (resumo ≥ soma das linhas, tolerância R$ 0,05; o `1_extrair.py` grava
+  os resumos em `dados/lancamentos/AAAA-MM.json`), e vira na linha de uma viagem não
+  conta (regra do Rodopar). Rubrica que não confere no resumo fica fora do estorno e
+  aparece como "não confirmado no resumo". Com valor pago → `ORDEM_CANCELADA_PAGA`
+  (alerta); sem → `ORDEM_CANCELADA` (info).
 - **Apuração de pagamento indevido de viagem** (`regras.apuracao`): por motorista,
   bônus de viagem em rota de carregamento (devido só o carregamento,
   `VALOR_CARREGAMENTO` = R$ 25,00 por lançamento, definido pelo usuário) e bônus de
-  ordem cancelada (nada devido). Mostra pago, devido, a recuperar e viagens contadas a
+  ordem cancelada (nada devido; estorna tudo o que a linha pagou, com a composição —
+  viagem, lona, vira, carregamento — na tabela e no .xlsx). Mostra pago, devido, a recuperar e viagens contadas a
   mais (VG), com documento, data, trecho, CT-e e container de cada lançamento.
   No painel: aba própria **Pagamento indevido** (totais, tabela por motorista e botão
   "Baixar apuração (.xlsx)" só com essa aba), com um resumo na Visão geral; no

@@ -503,23 +503,24 @@ const XLSX_MIN = (()=>{
 /* aba "Pagamento indevido" do xlsx: detalhe por lançamento, subtotal por motorista e total */
 function planilhaIndevido(meses){
   /* Pagamento indevido: por motorista e o detalhe por lançamento */
-  const pi = [['Mês','Cód.','Motorista','Motivo','Documento','Data','Origem / Destino','CT-e','Container','VG','Bônus pago','Carregamento devido','A recuperar']];
+  const pi = [['Mês','Cód.','Motorista','Motivo','Documento','Data','Origem / Destino','CT-e','Container','VG','Composição do pago','Valor pago','Carregamento devido','A recuperar']];
   const piTot = {pago:0, devido:0, recuperar:0, lanc:0, vg:0, mot:new Set()};
   for(const m of meses){
     const A = LANC[m].apur; if(!A) continue;
     const nome = Object.fromEntries(DATASETS[m].map(d=>[d.cod,d.nome]));
     for(const mo of A.motoristas){
       for(const it of A.itens.filter(i=>i.cod===mo.cod)){
-        pi.push([mshort(m), it.cod, nome[it.cod]||'', it.motivo, it.doc, it.data, it.od, it.cte, it.container||'', {v:it.vg,s:7}, it.pago, it.devido, it.recuperar]);
+        pi.push([mshort(m), it.cod, nome[it.cod]||'', it.motivo, it.doc, it.data, it.od, it.cte, it.container||'', {v:it.vg,s:7},
+          (it.composicao||'') + (it.semConf && it.semConf.length ? ` (não confirmado no resumo: ${it.semConf.join(', ')})` : ''), it.pago, it.devido, it.recuperar]);
       }
-      pi.push([{v:mshort(m),s:6}, {v:mo.cod,s:6}, {v:`Subtotal ${nome[mo.cod]||mo.cod}`,s:6}, '', '', '', '', '', '', {v:mo.vg,s:7}, mo.pago, mo.devido, mo.recuperar]);
+      pi.push([{v:mshort(m),s:6}, {v:mo.cod,s:6}, {v:`Subtotal ${nome[mo.cod]||mo.cod}`,s:6}, '', '', '', '', '', '', {v:mo.vg,s:7}, '', mo.pago, mo.devido, mo.recuperar]);
       piTot.pago+=mo.pago; piTot.devido+=mo.devido; piTot.recuperar+=mo.recuperar; piTot.lanc+=mo.lanc; piTot.vg+=mo.vg; piTot.mot.add(m+'|'+mo.cod);
     }
   }
   if(pi.length===1) pi.push(['', '', 'Nenhum pagamento indevido de viagem no período.']);
-  else pi.push([], [{v:'TOTAL',s:3}, '', `${piTot.mot.size} motorista(s) · ${piTot.lanc} lançamento(s)`, '', '', '', '', '', '', {v:piTot.vg,s:7},
+  else pi.push([], [{v:'TOTAL',s:3}, '', `${piTot.mot.size} motorista(s) · ${piTot.lanc} lançamento(s)`, '', '', '', '', '', '', {v:piTot.vg,s:7}, '',
     Math.round(piTot.pago*100)/100, Math.round(piTot.devido*100)/100, Math.round(piTot.recuperar*100)/100],
-    [{v:`Carregamento devido: R$ ${brl(LANC[meses[0]].apur ? LANC[meses[0]].apur.valorCarregamento : 25)} por lançamento em rota de carregamento; ordem cancelada: nada devido.`, s:6}]);
+    [{v:`Carregamento devido: R$ ${brl(LANC[meses[0]].apur ? LANC[meses[0]].apur.valorCarregamento : 25)} por lançamento em rota de carregamento (estorna só o bônus de viagem); ordem cancelada: nada devido — estorna tudo o que a linha teve de pagamento (viagem, lona, vira, carregamento) e entrou no resumo do motorista.`, s:6}]);
   return pi;
 }
 
@@ -601,7 +602,7 @@ function relatorioVerificacoes(meses, comInfo){
   return XLSX_MIN.build([
     {name:'Resumo', rows:resumo, header:4, widths:[13,44,90,...(meses.length>1?meses.map(()=>9):[]),13,12]},
     {name:'Ocorrências', rows:ocRows, header:0, widths:[8,12,34,70,7,34,30,6,16,10,10,16,30,34,12,15,10,5,9,9,13,10,10]},
-    {name:'Pagamento indevido', rows:pi, header:0, widths:[8,7,34,30,16,10,34,15,16,5,13,19,13]},
+    {name:'Pagamento indevido', rows:pi, header:0, widths:[8,7,34,30,16,10,34,15,16,5,34,13,19,13]},
     {name:'Confronto CT-e', rows:cf, header:0, widths:[8,14,62,34, ...Array.from({length:nMax},()=>[7,32,15,10,10,15,32,12,10,5,12]).flat()]},
     {name:'Frete x lançamentos', rows:fr, header:0, widths:[8,7,36,18,20,13,46]}
   ]);
@@ -741,20 +742,20 @@ function renderIndevido(){
   const L = LANC[MES], box = document.getElementById('indevido'), note = document.getElementById('ind-note');
   if(!L || !L.apur){ note.textContent=''; box.innerHTML = `<div class="pad" style="color:var(--muted);font-size:12.5px">Movimentações detalhadas não disponíveis para ${mlab(MES)}.</div>`; return; }
   const A = L.apur, T0 = A.total, nome = Object.fromEntries(DATA.map(d=>[d.cod,d.nome]));
-  note.textContent = `viagem paga em rota de carregamento (devido R$ ${brl(A.valorCarregamento)} de carregamento por lançamento) e ordem cancelada paga`;
+  note.textContent = `viagem paga em rota de carregamento (devido R$ ${brl(A.valorCarregamento)} de carregamento por lançamento) e ordem cancelada paga (estorno de tudo o que a linha pagou)`;
   if(!A.motoristas.length){ box.innerHTML = `<div class="pad" style="color:var(--muted);font-size:12.5px">Nenhum pagamento indevido de viagem em ${mlab(MES)}.</div>`; return; }
-  const det = cod => A.itens.filter(i=>i.cod===cod).map(i=>`<span>${esc(i.doc)} · ${i.data} · ${esc(i.od)} · R$ ${brl(i.pago)}</span>`
+  const det = cod => A.itens.filter(i=>i.cod===cod).map(i=>`<span>${esc(i.doc)} · ${i.data} · ${esc(i.od)} · R$ ${brl(i.pago)}${i.comp && Object.keys(i.comp).length>1 ? ` (${esc(i.composicao)})` : ''}${i.semConf && i.semConf.length ? ` · <b>não confirmado no resumo: ${esc(i.semConf.join(', '))}</b>` : ''}</span>`
     + `<span class="ids">CT-e <b>${esc(i.cte)}</b> · Container <b>${esc(i.container||'—')}</b></span>`).join('');
   box.innerHTML = `<div class="ind-kpi">
       <div><div class="lab">Motoristas</div><div class="val num">${T0.motoristas}</div></div>
       <div><div class="lab">Lançamentos</div><div class="val num">${T0.lanc}</div></div>
-      <div><div class="lab">Bônus de viagem pago</div><div class="val num">R$ ${brl(T0.pago)}</div></div>
+      <div><div class="lab">Valor pago</div><div class="val num">R$ ${brl(T0.pago)}</div></div>
       <div><div class="lab">Carregamento devido</div><div class="val num">R$ ${brl(T0.devido)}</div></div>
       <div><div class="lab">A recuperar</div><div class="val num rec">R$ ${brl(T0.recuperar)}</div></div>
       <div><div class="lab">Viagens contadas a mais</div><div class="val num">${T0.vg}</div></div>
     </div>
     <div style="overflow-x:auto"><table class="ind-t">
-      <thead><tr><th>Motorista</th><th>Motivo</th><th>Lanç.</th><th>Bônus pago</th><th>Carregamento devido</th><th>A recuperar</th><th>VG</th></tr></thead>
+      <thead><tr><th>Motorista</th><th>Motivo</th><th>Lanç.</th><th>Valor pago</th><th>Carregamento devido</th><th>A recuperar</th><th>VG</th></tr></thead>
       <tbody>${A.motoristas.map(m=>`<tr data-cod="${m.cod}">
         <td><span class="nm">${esc(nome[m.cod]||m.cod)}</span> <span class="gtag num">${m.cod}</span><span class="det num">${det(m.cod)}</span></td>
         <td>${m.motivos.join(' · ')}</td><td class="num">${m.lanc}</td><td class="num">R$ ${brl(m.pago)}</td>
@@ -769,11 +770,11 @@ function renderIndevidoCallout(){
   document.getElementById('pi-per').textContent = mlab(MES);
   document.getElementById('pi-btn').disabled = !T0;
   document.getElementById('pi-foot').textContent = T0
-    ? `Bônus de viagem pago em rota de carregamento (${REGRA.ROTA_CARREGAMENTO ? REGRA.ROTA_CARREGAMENTO.descricao.replace(/ \(nos dois sentidos\).*$/,'') : ''}, nos dois sentidos) ou em ordem cancelada. Devido: R$ ${brl(L.apur.valorCarregamento)} de carregamento por lançamento em rota de carregamento; nada na ordem cancelada. Clique no motorista para abrir as movimentações.`
+    ? `Bônus de viagem pago em rota de carregamento (${REGRA.ROTA_CARREGAMENTO ? REGRA.ROTA_CARREGAMENTO.descricao.replace(/ \(nos dois sentidos\).*$/,'') : ''}, nos dois sentidos) ou em ordem cancelada. Devido: R$ ${brl(L.apur.valorCarregamento)} de carregamento por lançamento em rota de carregamento; nada na ordem cancelada, que estorna tudo o que a linha pagou (viagem, lona, vira, carregamento), conferido no resumo do motorista. Clique no motorista para abrir as movimentações.`
     : '';
   box.innerHTML = T0 && T0.motoristas ? `<div class="pi-call">
       <div><div class="t">Pagamento indevido de viagem · ${T0.motoristas} motorista(s), ${T0.lanc} lançamento(s)</div>
-        <div class="s">Bônus pago R$ ${brl(T0.pago)} · carregamento devido R$ ${brl(T0.devido)} · ${T0.vg} viagem(ns) contada(s) a mais</div></div>
+        <div class="s">Valor pago R$ ${brl(T0.pago)} · carregamento devido R$ ${brl(T0.devido)} · ${T0.vg} viagem(ns) contada(s) a mais</div></div>
       <div style="display:flex;align-items:center;gap:14px"><span class="v num">R$ ${brl(T0.recuperar)}</span>
         <button class="chip rel-btn" type="button" id="pi-go">Ver apuração</button></div>
     </div>` : '';
@@ -786,7 +787,7 @@ document.getElementById('pi-btn').addEventListener('click', async ()=>{
   btn.disabled = true; msg.textContent = 'Gerando…';
   try{
     const blob = XLSX_MIN.build([{name:'Pagamento indevido', rows:planilhaIndevido([MES]), header:0,
-      widths:[8,7,34,30,16,10,34,15,16,5,13,19,13]}]);
+      widths:[8,7,34,30,16,10,34,15,16,5,34,13,19,13]}]);
     const st = await salvarArquivo(nome, blob);
     msg.textContent = st==='delivered' ? 'Apuração enviada.' : `Apuração gerada: ${nome}`;
   }catch(e){

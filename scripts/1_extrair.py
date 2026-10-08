@@ -178,9 +178,10 @@ CAMPOS_LANC = ['tipo', 'doc', 'data', 'chegada', 'container', 'cliente', 'od', '
                'vg', 'lonaq', 'vira', 'carreg', 'lona', 'viagem']
 
 
-def gravar_lancamentos(mes, txt, movs):
+def gravar_lancamentos(mes, txt, movs, rows):
     """dados/lancamentos/AAAA-MM.json: todas as movimentações do PDF, por motorista,
-    com o período do fechamento. Base do detalhe no painel e das verificações."""
+    com o período do fechamento e as rubricas do RESUMO DO BÔNUS de cada motorista (o que
+    entrou para pagamento). Base do detalhe no painel e das verificações."""
     per = {}
     for chave, rot in (('viagens', 'FECHAMENTO DE VIAGENS'), ('media', 'FECHAMENTO DE MÉDIA')):
         m = re.search(rot + r':\s*(\d{2}/\d{2}/\d{4})[^-]*-\s*(\d{2}/\d{2}/\d{4})', txt)
@@ -193,14 +194,16 @@ def gravar_lancamentos(mes, txt, movs):
     # uma linha por lançamento: legível no diff do git e compacto
     linhas = [f'  {json.dumps(cod)}: [\n' + ',\n'.join('   ' + json.dumps(r, ensure_ascii=False) for r in ls) + '\n  ]'
               for cod, ls in corpo['motoristas'].items()]
+    resumos = {r['cod']: {'viagem': r['_vViag'], 'vira': r['_vVira'], 'carreg': r['_vCarreg'], 'lona': r['_vLona']}
+               for r in rows}
     dest.write_text('{\n "periodo": ' + json.dumps(per) + ',\n "campos": ' + json.dumps(CAMPOS_LANC) +
-                    ',\n "motoristas": {\n' + ',\n'.join(linhas) + '\n }\n}\n', encoding='utf8')
+                    ',\n "resumos": {\n' + ',\n'.join(f'  {json.dumps(c)}: {json.dumps(v)}' for c, v in resumos.items()) +
+                    '\n },\n "motoristas": {\n' + ',\n'.join(linhas) + '\n }\n}\n', encoding='utf8')
 
 
-def main():
-    if len(sys.argv) != 3 or not re.fullmatch(r'\d{4}-\d{2}', sys.argv[2]):
-        sys.exit(__doc__)
-    pdf, mes = Path(sys.argv[1]), sys.argv[2]
+def processar(pdf):
+    """Lê o PDF e confere cada bloco. Devolve (rows, movs, rel, txt): rows com os valores
+    do resumo (sem ajustes nem colunas derivadas), movs = lançamentos por motorista."""
     txt = texto_pdf(pdf)
 
     marcas = list(RE_MOTORISTA.finditer(txt))
@@ -298,13 +301,21 @@ def main():
                          _premTotPdf=pr['premTotPdf'], _totalPdf=pr['totalPdf'], _nLanc=len(lanc), _freteLinhas=sf))
 
     rows.sort(key=lambda r: r['nome'])
+    return rows, movs, rel, txt
+
+
+def main():
+    if len(sys.argv) != 3 or not re.fullmatch(r'\d{4}-\d{2}', sys.argv[2]):
+        sys.exit(__doc__)
+    pdf, mes = Path(sys.argv[1]), sys.argv[2]
+    rows, movs, rel, txt = processar(pdf)
     aplicar_ajustes(rows, mes, rel)
     derivar(rows)
 
     dest = RAIZ / 'dados' / f'{mes}.json'
     publico = [{k: v for k, v in r.items() if not k.startswith('_')} for r in rows]
     dest.write_text(json.dumps(publico, ensure_ascii=False, indent=1) + '\n', encoding='utf8')
-    gravar_lancamentos(mes, txt, movs)
+    gravar_lancamentos(mes, txt, movs, rows)
     (RAIZ / 'saida').mkdir(exist_ok=True)
     (RAIZ / 'saida' / f'conferencia_{mes}.json').write_text(
         json.dumps({'rows': rows, 'relatorio': rel}, ensure_ascii=False, indent=1), encoding='utf8')
