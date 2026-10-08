@@ -500,6 +500,29 @@ const XLSX_MIN = (()=>{
   return {build};
 })();
 
+/* aba "Pagamento indevido" do xlsx: detalhe por lançamento, subtotal por motorista e total */
+function planilhaIndevido(meses){
+  /* Pagamento indevido: por motorista e o detalhe por lançamento */
+  const pi = [['Mês','Cód.','Motorista','Motivo','Documento','Data','Origem / Destino','CT-e','Container','VG','Bônus pago','Carregamento devido','A recuperar']];
+  const piTot = {pago:0, devido:0, recuperar:0, lanc:0, vg:0, mot:new Set()};
+  for(const m of meses){
+    const A = LANC[m].apur; if(!A) continue;
+    const nome = Object.fromEntries(DATASETS[m].map(d=>[d.cod,d.nome]));
+    for(const mo of A.motoristas){
+      for(const it of A.itens.filter(i=>i.cod===mo.cod)){
+        pi.push([mshort(m), it.cod, nome[it.cod]||'', it.motivo, it.doc, it.data, it.od, it.cte, it.container||'', {v:it.vg,s:7}, it.pago, it.devido, it.recuperar]);
+      }
+      pi.push([{v:mshort(m),s:6}, {v:mo.cod,s:6}, {v:`Subtotal ${nome[mo.cod]||mo.cod}`,s:6}, '', '', '', '', '', '', {v:mo.vg,s:7}, mo.pago, mo.devido, mo.recuperar]);
+      piTot.pago+=mo.pago; piTot.devido+=mo.devido; piTot.recuperar+=mo.recuperar; piTot.lanc+=mo.lanc; piTot.vg+=mo.vg; piTot.mot.add(m+'|'+mo.cod);
+    }
+  }
+  if(pi.length===1) pi.push(['', '', 'Nenhum pagamento indevido de viagem no período.']);
+  else pi.push([], [{v:'TOTAL',s:3}, '', `${piTot.mot.size} motorista(s) · ${piTot.lanc} lançamento(s)`, '', '', '', '', '', '', {v:piTot.vg,s:7},
+    Math.round(piTot.pago*100)/100, Math.round(piTot.devido*100)/100, Math.round(piTot.recuperar*100)/100],
+    [{v:`Carregamento devido: R$ ${brl(LANC[meses[0]].apur ? LANC[meses[0]].apur.valorCarregamento : 25)} por lançamento em rota de carregamento; ordem cancelada: nada devido.`, s:6}]);
+  return pi;
+}
+
 /* monta o relatório do período escolhido: Resumo · Ocorrências · Frete × lançamentos */
 function relatorioVerificacoes(meses, comInfo){
   const nivelTxt = n => n==='alerta' ? 'Alerta' : 'Informativo';
@@ -573,24 +596,7 @@ function relatorioVerificacoes(meses, comInfo){
   }
   if(cf.length===1) cf.push(['', '', 'Nenhum CT-e com frete em mais de um lançamento no período.']);
 
-  /* Pagamento indevido: por motorista e o detalhe por lançamento */
-  const pi = [['Mês','Cód.','Motorista','Motivo','Documento','Data','Origem / Destino','CT-e','Container','VG','Bônus pago','Carregamento devido','A recuperar']];
-  const piTot = {pago:0, devido:0, recuperar:0, lanc:0, vg:0, mot:new Set()};
-  for(const m of meses){
-    const A = LANC[m].apur; if(!A) continue;
-    const nome = Object.fromEntries(DATASETS[m].map(d=>[d.cod,d.nome]));
-    for(const mo of A.motoristas){
-      for(const it of A.itens.filter(i=>i.cod===mo.cod)){
-        pi.push([mshort(m), it.cod, nome[it.cod]||'', it.motivo, it.doc, it.data, it.od, it.cte, it.container||'', {v:it.vg,s:7}, it.pago, it.devido, it.recuperar]);
-      }
-      pi.push([{v:mshort(m),s:6}, {v:mo.cod,s:6}, {v:`Subtotal ${nome[mo.cod]||mo.cod}`,s:6}, '', '', '', '', '', '', {v:mo.vg,s:7}, mo.pago, mo.devido, mo.recuperar]);
-      piTot.pago+=mo.pago; piTot.devido+=mo.devido; piTot.recuperar+=mo.recuperar; piTot.lanc+=mo.lanc; piTot.vg+=mo.vg; piTot.mot.add(m+'|'+mo.cod);
-    }
-  }
-  if(pi.length===1) pi.push(['', '', 'Nenhum pagamento indevido de viagem no período.']);
-  else pi.push([], [{v:'TOTAL',s:3}, '', `${piTot.mot.size} motorista(s) · ${piTot.lanc} lançamento(s)`, '', '', '', '', '', '', {v:piTot.vg,s:7},
-    Math.round(piTot.pago*100)/100, Math.round(piTot.devido*100)/100, Math.round(piTot.recuperar*100)/100],
-    [{v:`Carregamento devido: R$ ${brl(LANC[meses[0]].apur ? LANC[meses[0]].apur.valorCarregamento : 25)} por lançamento em rota de carregamento; ordem cancelada: nada devido.`, s:6}]);
+  const pi = planilhaIndevido(meses);
 
   return XLSX_MIN.build([
     {name:'Resumo', rows:resumo, header:4, widths:[13,44,90,...(meses.length>1?meses.map(()=>9):[]),13,12]},
@@ -757,6 +763,38 @@ function renderIndevido(){
         <td class="num">R$ ${brl(T0.devido)}</td><td class="num">R$ ${brl(T0.recuperar)}</td><td class="num">${T0.vg}</td></tr></tfoot>
     </table></div>`;
 }
+function renderIndevidoCallout(){
+  const box = document.getElementById('pi-callout'), L = LANC[MES];
+  const T0 = L && L.apur ? L.apur.total : null;
+  document.getElementById('pi-per').textContent = mlab(MES);
+  document.getElementById('pi-btn').disabled = !T0;
+  document.getElementById('pi-foot').textContent = T0
+    ? `Bônus de viagem pago em rota de carregamento (${REGRA.ROTA_CARREGAMENTO ? REGRA.ROTA_CARREGAMENTO.descricao.replace(/ \(nos dois sentidos\).*$/,'') : ''}, nos dois sentidos) ou em ordem cancelada. Devido: R$ ${brl(L.apur.valorCarregamento)} de carregamento por lançamento em rota de carregamento; nada na ordem cancelada. Clique no motorista para abrir as movimentações.`
+    : '';
+  box.innerHTML = T0 && T0.motoristas ? `<div class="pi-call">
+      <div><div class="t">Pagamento indevido de viagem · ${T0.motoristas} motorista(s), ${T0.lanc} lançamento(s)</div>
+        <div class="s">Bônus pago R$ ${brl(T0.pago)} · carregamento devido R$ ${brl(T0.devido)} · ${T0.vg} viagem(ns) contada(s) a mais</div></div>
+      <div style="display:flex;align-items:center;gap:14px"><span class="v num">R$ ${brl(T0.recuperar)}</span>
+        <button class="chip rel-btn" type="button" id="pi-go">Ver apuração</button></div>
+    </div>` : '';
+}
+document.getElementById('pi-callout').addEventListener('click',e=>{ if(e.target.closest('#pi-go')) setTab('tab-pi'); });
+document.getElementById('pi-btn').addEventListener('click', async ()=>{
+  const btn = document.getElementById('pi-btn'), msg = document.getElementById('pi-msg');
+  if(!LANC[MES]) return;
+  const nome = `Pagamento_Indevido_Viagem_${MES}.xlsx`;
+  btn.disabled = true; msg.textContent = 'Gerando…';
+  try{
+    const blob = XLSX_MIN.build([{name:'Pagamento indevido', rows:planilhaIndevido([MES]), header:0,
+      widths:[8,7,34,30,16,10,34,15,16,5,13,19,13]}]);
+    const st = await salvarArquivo(nome, blob);
+    msg.textContent = st==='delivered' ? 'Apuração enviada.' : `Apuração gerada: ${nome}`;
+  }catch(e){
+    const c = e && e.code;
+    msg.textContent = c==='declined' ? 'Download cancelado.' : c==='rate_limited' ? 'Já há um download aguardando confirmação.'
+      : 'Não foi possível baixar nesta visualização.';
+  }finally{ btn.disabled = false; }
+});
 document.getElementById('indevido').addEventListener('click',e=>{
   const tr = e.target.closest('tr[data-cod]'); if(!tr) return;
   openDriver(tr.dataset.cod); setTimeout(()=>document.getElementById('d-mov-sec').scrollIntoView({behavior:'smooth'}),50);
@@ -930,7 +968,7 @@ document.getElementById('ev-list').addEventListener('keydown',e=>{
 });
 
 /* ================= ABAS ================= */
-const TABS = {'tab-geral':'v-geral','tab-ind':'v-ind','tab-evo':'v-evo','tab-conf':'v-conf'};
+const TABS = {'tab-geral':'v-geral','tab-ind':'v-ind','tab-evo':'v-evo','tab-pi':'v-pi','tab-conf':'v-conf'};
 function setTab(id){
   Object.entries(TABS).forEach(([t,v])=>{
     document.getElementById(t).setAttribute('aria-selected', t===id);
@@ -1010,7 +1048,7 @@ function renderMes(keepCod){
   ATIVOS = DATA.filter(d=>isAvaliado(d) && !isManobrista(d));
   calcRanks();
   document.getElementById('per-lab').innerHTML = `${mlab(MES)} · <strong>${DATA.length} motoristas</strong>`;
-  renderKPIs(); renderComposicao(); renderGrupos(); renderFora(); renderIndevido(); renderVerif(); renderRelControles(); renderRank(); renderTable(); renderConfrontos();
+  renderKPIs(); renderComposicao(); renderGrupos(); renderFora(); renderIndevido(); renderIndevidoCallout(); renderVerif(); renderRelControles(); renderRank(); renderTable(); renderConfrontos();
   renderIndividual(keepCod);
 }
 renderMes();

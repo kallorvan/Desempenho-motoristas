@@ -75,7 +75,8 @@ estão no topo do arquivo.
   `VALOR_CARREGAMENTO` = R$ 25,00 por lançamento, definido pelo usuário) e bônus de
   ordem cancelada (nada devido). Mostra pago, devido, a recuperar e viagens contadas a
   mais (VG), com documento, data, trecho, CT-e e container de cada lançamento.
-  No painel: bloco "Pagamento indevido de viagem" na Visão geral; no
+  No painel: aba própria **Pagamento indevido** (totais, tabela por motorista e botão
+  "Baixar apuração (.xlsx)" só com essa aba), com um resumo na Visão geral; no
   relatório .xlsx: aba *Pagamento indevido*; na linha de comando: topo do relatório
   do `regras.py`. No painel: tabela de movimentações na ficha do motorista, com as
 ocorrências logo abaixo de cada linha, e o resumo "Verificações das movimentações"
@@ -208,7 +209,9 @@ A planilha não muda — segue o modelo.
 
 Abas: **Visão geral** (KPIs, composição, grupos, ranking, tabela) · **Por
 motorista** (ficha individual, comparação com a frota, histórico mês a mês) ·
-**Evolução** (frota mês a mês e variação por motorista). Identidade visual
+**Evolução** (frota mês a mês e variação por motorista) · **Pagamento indevido**
+(apuração de viagem paga em rota de carregamento e ordem cancelada paga) ·
+**Confrontos** (CT-e duplicados lado a lado). Identidade visual
 Dínamo/Tóliman — navy `#1C2543`, coral `#DD4663`, mauve `#AE82B1`, areia `#F4D38D`.
 
 ## Gotchas técnicos
