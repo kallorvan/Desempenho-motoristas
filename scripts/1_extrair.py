@@ -124,6 +124,8 @@ def resumo_bonus(txt):
     r['qViagVira'] = int(campo(txt, 'TOTAL VIAGEM+VIRA:', r'\d+'))
     r['subtotal'] = br(campo(txt, 'SUBTOTAL BÔNUS:'))
     r['totalBonus'] = br(campo(txt, 'TOTAL BÔNUS:'))
+    if r['totalBonus'] is None:  # prévia (relatório só de bônus): não traz TOTAL BÔNUS
+        r['totalBonus'] = r['subtotal']
     r['frete'] = br(campo(txt, 'TOTAL DE FRETE CLIENTE:'))
     return r
 
@@ -145,6 +147,16 @@ def resumo_premio(txt):
     km = campo(txt, 'KM RODADO:', r'[\d.]+')
     p['km'] = int(km.replace('.', '')) if km else 0
     return p
+
+
+# Prévia: relatório "Bônus de Viagens de Motoristas" emitido antes do fechamento de média
+# (ex.: out/2026) — só movimentações e RESUMO DO MOTORISTA, sem RESUMO PRÊMIO POR MÉDIA.
+PREMIO_VAZIO = dict(media=None, gcod=0, gnome='', totalPdf=None, pos=0, pctMedia=0.0, econ=None,
+                    premio=None, bMedia=None, premTotPdf=None, km=0)
+
+
+def eh_previa(txt):
+    return 'RESUMO PRÊMIO POR MÉDIA' not in txt
 
 
 def escolher_premio(blocos):
@@ -187,6 +199,9 @@ def gravar_lancamentos(mes, txt, movs, rows):
         m = re.search(rot + r':\s*(\d{2}/\d{2}/\d{4})[^-]*-\s*(\d{2}/\d{2}/\d{4})', txt)
         if m:
             per[chave] = list(m.groups())
+    m = re.search(r'PERÍODO DE (\d{2}/\d{2}/\d{4}) ATÉ (\d{2}/\d{2}/\d{4})', txt)  # prévia
+    if 'viagens' not in per and m:
+        per['viagens'] = list(m.groups())
     dest = RAIZ / 'dados' / 'lancamentos' / f'{mes}.json'
     dest.parent.mkdir(exist_ok=True)
     corpo = {'periodo': per, 'campos': CAMPOS_LANC,
@@ -205,6 +220,7 @@ def processar(pdf):
     """Lê o PDF e confere cada bloco. Devolve (rows, movs, rel, txt): rows com os valores
     do resumo (sem ajustes nem colunas derivadas), movs = lançamentos por motorista."""
     txt = texto_pdf(pdf)
+    previa = eh_previa(txt)
 
     marcas = list(RE_MOTORISTA.finditer(txt))
     # um motorista pode ter o bloco partido em várias páginas: agrupar por código
@@ -229,8 +245,10 @@ def processar(pdf):
         idx = [m.start() for m in re.finditer('RESUMO PRÊMIO POR MÉDIA', t)]
         pbs = [resumo_premio(t[s:(idx[k + 1] if k + 1 < len(idx) else len(t))]) for k, s in enumerate(idx)]
         if not pbs:
-            rel['falhas'].append(f'{cod} {b["nome"]}: sem RESUMO PRÊMIO POR MÉDIA')
-            continue
+            if not previa:
+                rel['falhas'].append(f'{cod} {b["nome"]}: sem RESUMO PRÊMIO POR MÉDIA')
+                continue
+            pbs = [dict(PREMIO_VAZIO)]
         pr = escolher_premio(pbs)
         if len(pbs) > 1:
             outros = [p for p in pbs if p is not pr]
@@ -316,13 +334,23 @@ def main():
     publico = [{k: v for k, v in r.items() if not k.startswith('_')} for r in rows]
     dest.write_text(json.dumps(publico, ensure_ascii=False, indent=1) + '\n', encoding='utf8')
     gravar_lancamentos(mes, txt, movs, rows)
+    # dados/AAAA-MM.meta.json marca o mês como prévia (sem média); o fechamento definitivo apaga
+    meta = RAIZ / 'dados' / f'{mes}.meta.json'
+    if eh_previa(txt):
+        em = re.search(r'Data\s*:\s*(\d{2}/\d{2}/\d{4})', txt)
+        meta.write_text(json.dumps({'previa': True, 'emissao': em.group(1) if em else '', 'arquivo': pdf.name,
+                                    'motivo': 'relatório só de bônus de viagem: sem RESUMO PRÊMIO POR MÉDIA'},
+                                   ensure_ascii=False, indent=1) + '\n', encoding='utf8')
+    elif meta.exists():
+        meta.unlink()
     (RAIZ / 'saida').mkdir(exist_ok=True)
     (RAIZ / 'saida' / f'conferencia_{mes}.json').write_text(
         json.dumps({'rows': rows, 'relatorio': rel}, ensure_ascii=False, indent=1), encoding='utf8')
 
     # --- relatório
     tot = lambda k: round(sum(r[k] for r in rows), 2)  # noqa: E731
-    print(f'== Conferência {mes} — {pdf.name}')
+    print(f'== Conferência {mes} — {pdf.name}' + (' — PRÉVIA: sem RESUMO PRÊMIO POR MÉDIA (premiação, km e média zerados)'
+                                                  if eh_previa(txt) else ''))
     print(f'Motoristas: {len(rows)} · lançamentos lidos: {sum(r["_nLanc"] for r in rows)}')
     print(f'Frete cliente R$ {tot("frete"):,.2f} · bônus op. R$ {tot("bonusOp"):,.2f} · '
           f'premiação R$ {tot("premTot"):,.2f} · bonificações R$ {tot("bonif"):,.2f}')

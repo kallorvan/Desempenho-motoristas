@@ -27,14 +27,19 @@ def js(obj):
 
 def main():
     arquivos = sorted((RAIZ / 'dados').glob('[0-9][0-9][0-9][0-9]-[0-9][0-9].json'))
-    datasets, tots, mlabel, mshort, lanc = {}, {}, {}, {}, {}
+    datasets, tots, mlabel, mshort, lanc, previa = {}, {}, {}, {}, {}, {}
     for f in arquivos:
         mes = f.stem
         rows = json.loads(f.read_text(encoding='utf8'))
-        datasets[mes] = [{k: r[k] for k in CAMPOS} for r in rows]
+        meta = f.with_name(f'{mes}.meta.json')
+        if meta.exists():  # prévia: relatório sem média (só bônus de viagem)
+            previa[mes] = json.loads(meta.read_text(encoding='utf8'))
+        datasets[mes] = [{k: r[k] for k in CAMPOS} | ({'previa': 1} if mes in previa else {}) for r in rows]
         tots[mes] = totais(rows)
-        aval = [r for r in rows if avaliado(r)]
-        fora = [r for r in rows if not avaliado(r)]
+        # na prévia não há km: o critério dos 4.000 km não se aplica; ficam fora só os sem frete
+        ok = (lambda r: r['frete'] > 0) if mes in previa else avaliado
+        aval = [r for r in rows if ok(r)]
+        fora = [r for r in rows if not ok(r)]
         tots[mes]['aval'] = totais(aval)
         s = lambda k: round(sum(r[k] for r in fora), 2)  # noqa: E731
         tots[mes]['fora'] = {'n': len(fora), 'frete': s('frete'), 'bonusOp': s('bonusOp'),
@@ -48,11 +53,11 @@ def main():
                          'apur': regras.apuracao(mes, oc)}
         aaaa, mm = mes.split('-')
         nome = MESES[int(mm) - 1]
-        mlabel[mes] = f'{nome} / {aaaa}'
-        mshort[mes] = f'{nome[:3]}/{aaaa[2:]}'
+        mlabel[mes] = f'{nome} / {aaaa}' + (' · prévia' if mes in previa else '')
+        mshort[mes] = f'{nome[:3]}/{aaaa[2:]}' + ('*' if mes in previa else '')
 
     app = (RAIZ / 'painel' / 'app.js').read_text(encoding='utf8')
-    for k, v in (('__LANC__', lanc), ('__REGRAS__', regras.REGRAS), ('__KM_MIN__', KM_MIN), ('__DATASETS__', datasets), ('__TOTAIS__', tots), ('__MLABEL__', mlabel), ('__MSHORT__', mshort)):
+    for k, v in (('__PREVIA__', previa), ('__LANC__', lanc), ('__REGRAS__', regras.REGRAS), ('__KM_MIN__', KM_MIN), ('__DATASETS__', datasets), ('__TOTAIS__', tots), ('__MLABEL__', mlabel), ('__MSHORT__', mshort)):
         assert app.count(k) == 1, f'placeholder {k} deve aparecer uma vez em app.js'
         app = app.replace(k, js(v))
     base = (RAIZ / 'painel' / 'base.html').read_text(encoding='utf8')
