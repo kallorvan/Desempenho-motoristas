@@ -256,6 +256,9 @@ footer{margin-top:34px;font-size:11px;color:var(--muted);line-height:1.6;border-
 .tagx.fora{background:rgba(244,211,141,.45);color:#6B4E0E}
 .tagx.alerta{background:rgba(221,70,99,.13);color:#B3243F}
 .rel-tools{gap:10px}
+.previa-ban{margin:14px 0 0;padding:12px 16px;font-size:12.5px;line-height:1.5;color:var(--ink);background:#FBF1D9;
+  border:1px solid var(--sand);border-left:4px solid #C9971F;border-radius:var(--r)}
+.previa-ban[hidden]{display:none}
 .pi-call{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:10px 18px;padding:14px 18px;
   background:var(--card);border:1px solid var(--line);border-left:4px solid var(--coral);border-radius:var(--r)}
 .pi-call .t{font-size:13px;font-weight:700} .pi-call .s{font-size:12px;color:var(--ink2);margin-top:3px}
@@ -399,6 +402,8 @@ footer{margin-top:34px;font-size:11px;color:var(--muted);line-height:1.6;border-
 </header>
 
 <main class="wrap">
+
+  <div class="previa-ban" id="previa-ban" role="note" hidden></div>
 
   <!-- ===================== VISÃO GERAL ===================== -->
   <section id="v-geral" role="tabpanel" aria-labelledby="tab-geral">

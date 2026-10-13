@@ -6,6 +6,10 @@ const TOTAIS   = __TOTAIS__;
 const MESES    = Object.keys(DATASETS).sort();
 const MLABEL   = __MLABEL__;
 const MSHORT   = __MSHORT__;
+/* prévia: mês lançado antes do fechamento de média (sem prêmio, km e média) — fica fora
+   da Evolução e do histórico; os confrontos e verificações funcionam normalmente */
+const PREVIA   = __PREVIA__;
+const MESES_FECH = MESES.filter(m=>!PREVIA[m]);
 const mlab  = m => MLABEL[m] || m;
 const mshort= m => MSHORT[m] || m;
 
@@ -56,7 +60,7 @@ const movsDe = (mes,cod)=>{ const L = LANC[mes]; if(!L || !L.mot[cod]) return nu
 const flagsDe = (mes,cod)=> (LANC[mes] && LANC[mes].flags[cod]) || {};
 const nAlertas = (mes,cod)=> Object.values(flagsDe(mes,cod)).flat().filter(f=>REGRA[f[0]].nivel==='alerta').length;
 const tagAlerta = d => { const n = nAlertas(MES,d.cod); return n ? `<span class="tagx alerta">${n} alerta${n>1?'s':''} nas movimentações</span>` : ''; };
-const isAvaliado = d => d.km >= KM_MIN;
+const isAvaliado = d => d.previa ? d.frete > 0 : d.km >= KM_MIN;
 const motivoFora = d => isManobrista(d) ? 'manobrista / sem frete' : (d.km <= 2 ? 'sem km apurado' : nf(d.km)+' km');
 let ATIVOS = DATA.filter(d=>isAvaliado(d) && !isManobrista(d));
 let RK = {};
@@ -78,7 +82,8 @@ mesSel.addEventListener('change',()=>{ MES = mesSel.value; renderMes(); });
 
 /* ================= VISÃO GERAL ================= */
 function renderKPIs(){
-  const prev = MESES[MESES.indexOf(MES)-1], P = prev ? TOTAIS[prev] : null;
+  const pv = PREVIA[MES];
+  const prev = pv ? null : MESES_FECH[MESES_FECH.indexOf(MES)-1], P = prev ? TOTAIS[prev] : null;
   const d = (a,b)=> (P && b) ? a/b-1 : null;
   const tag = v => v==null ? '' : `<span class="delta ${v>=0?'up':'down'}">${sgn(v)}</span>`;
   const vs  = prev ? ` vs ${mshort(prev)}` : '';
@@ -87,12 +92,12 @@ function renderKPIs(){
   document.getElementById('k-frete-sub').innerHTML = 'R$ '+brl(T.freteMedioViagem)+' por viagem'+tag(d(T.frete,P&&P.frete))+vs;
   document.getElementById('k-bonif').textContent = brl(T.totalBonif);
   document.getElementById('k-bonif-sub').innerHTML = pct(T.pctBonifFrete,2)+' do frete cliente'+tag(d(T.totalBonif,P&&P.totalBonif))+vs;
-  document.getElementById('k-km').textContent = nf(T.km);
-  document.getElementById('k-km-sub').innerHTML = 'R$ '+nf(T.fretePorKm,2)+' de frete por km'+tag(d(T.km,P&&P.km))+vs;
+  document.getElementById('k-km').textContent = pv ? '—' : nf(T.km);
+  document.getElementById('k-km-sub').innerHTML = pv ? 'sem km na prévia' : 'R$ '+nf(T.fretePorKm,2)+' de frete por km'+tag(d(T.km,P&&P.km))+vs;
   document.getElementById('k-viag').textContent = nf(T.viagens);
   document.getElementById('k-viag-sub').innerHTML = nf(T.viagensVira)+' com vira · '+nf(T.viagensVira-T.viagens)+' viras'+tag(d(T.viagens,P&&P.viagens))+vs;
-  document.getElementById('k-media').textContent = nf(T.media,2);
-  document.getElementById('k-media-sub').innerHTML = 'R$ '+brl(T.valorEconomia)+' de economia'+tag(d(T.media,P&&P.media))+vs;
+  document.getElementById('k-media').textContent = pv ? '—' : nf(T.media,2);
+  document.getElementById('k-media-sub').innerHTML = pv ? 'sem média na prévia' : 'R$ '+brl(T.valorEconomia)+' de economia'+tag(d(T.media,P&&P.media))+vs;
   document.getElementById('k-pctbf').textContent = pct(T.pctBonifFrete,2);
   document.getElementById('k-pctbf-sub').textContent = 'R$ '+brl(T.totalBonif)+' sobre R$ '+brl(T.frete);
   document.getElementById('k-part').textContent = pct(T.partFrete,2);
@@ -144,7 +149,7 @@ function renderGrupos(){
 /* motoristas fora do critério (abaixo de KM_MIN) */
 function renderFora(){
   const F = T.fora, rows = DATA.filter(d=>!isAvaliado(d)).sort((a,b)=>b.bonif-a.bonif);
-  document.getElementById('fora-note').textContent = `abaixo de ${nf(KM_MIN)} km no mês · fora dos rankings e das comparações`;
+  document.getElementById('fora-note').textContent = PREVIA[MES] ? 'prévia sem km: fora só quem não tem frete (manobristas)' : `abaixo de ${nf(KM_MIN)} km no mês · fora dos rankings e das comparações`;
   document.getElementById('fora').innerHTML = !rows.length
     ? `<div style="color:var(--muted);font-size:12.5px">Todos os motoristas do mês rodaram ${nf(KM_MIN)} km ou mais.</div>`
     : `<div class="mini" style="margin-bottom:14px">
@@ -261,7 +266,7 @@ const FLEETK = {fpv:'freteMedioViagem', bpv:'bonifMediaViagem', fkm:'fretePorKm'
 const fleetVal = k => k==='part' ? 1/DATA.length : T.aval[FLEETK[k]];
 
 /* série do motorista mês a mês (usada no painel individual e na aba Evolução) */
-const serie = (cod,k)=> MESES.map(m=>{
+const serie = (cod,k)=> MESES_FECH.map(m=>{
   const r = DATASETS[m].find(x=>x.cod===cod);
   return {mes:m, v: r ? (typeof r[k]==='number' ? r[k] : null) : null};
 });
@@ -855,7 +860,7 @@ let evM = 'frete', evSort = 'delta', evOnly = 'todos';
 
 function renderEvolucao(){
   const M = EMET[evM];
-  const A = MESES[MESES.length-1], B = MESES[MESES.length-2];
+  const A = MESES_FECH[MESES_FECH.length-1], B = MESES_FECH[MESES_FECH.length-2];
 
   /* --- KPIs da frota --- */
   document.getElementById('ev-kpis').innerHTML = Object.keys(EMET).map((k,i)=>{
@@ -876,7 +881,7 @@ function renderEvolucao(){
   })();
 
   /* --- barras por mês (métrica selecionada) --- */
-  const bars = MESES.map(m=>({m, v:TOTAIS[m][M.tot]}));
+  const bars = MESES_FECH.map(m=>({m, v:TOTAIS[m][M.tot]}));
   const bmax = Math.max(...bars.map(b=>b.v))*1.1 || 1;
   document.getElementById('ev-fleet').innerHTML = bars.map((b,i)=>{
     const p = i>0 ? b.v/bars[i-1].v-1 : null;
@@ -887,8 +892,8 @@ function renderEvolucao(){
   }).join('');
 
   /* --- composição da bonificação mês a mês --- */
-  const cmax = Math.max(...MESES.map(m=>TOTAIS[m].totalBonif));
-  document.getElementById('ev-comp').innerHTML = MESES.map(m=>{
+  const cmax = Math.max(...MESES_FECH.map(m=>TOTAIS[m].totalBonif));
+  document.getElementById('ev-comp').innerHTML = MESES_FECH.map(m=>{
     const t = TOTAIS[m];
     const parts = [['Bônus operacional',t.bonusOp,'var(--ink)'],['Prêmio por economia',t.premioEconomia,'var(--coral)'],['Bônus por média',t.bonusMedia,'var(--mauve)']];
     return `<div class="evb">
@@ -904,11 +909,11 @@ function renderEvolucao(){
     </div>`;
 
   /* --- lista por motorista --- */
-  const codes = [...new Set(MESES.flatMap(m=>DATASETS[m].map(d=>d.cod)))];
+  const codes = [...new Set(MESES_FECH.flatMap(m=>DATASETS[m].map(d=>d.cod)))];
   let rows = codes.map(cod=>{
     const s = serie(cod,evM);
     const last = DATASETS[A].find(x=>x.cod===cod), first = B ? DATASETS[B].find(x=>x.cod===cod) : null;
-    const ref = last || MESES.map(m=>DATASETS[m].find(x=>x.cod===cod)).filter(Boolean).pop();
+    const ref = last || MESES_FECH.map(m=>DATASETS[m].find(x=>x.cod===cod)).filter(Boolean).pop();
     const a = last ? last[evM] : null, b = first ? first[evM] : null;
     const dl = (a!=null && b) ? a/b-1 : null;
     const sit = last && first ? 'ambos' : (last ? 'entrou' : 'saiu');
@@ -936,7 +941,7 @@ function renderEvolucao(){
         ${r.sit!=='ambos'?`<span class="tagx ${r.sit}">${r.sit==='entrou'?'entrou em '+mshort(A):'sem registro em '+mshort(A)}</span>`:''}
       </div>
       <div class="evr-b">
-        ${MESES.map(m=>{
+        ${MESES_FECH.map(m=>{
           const p = r.s.find(x=>x.mes===m);
           return `<div class="evr-line"><i>${mshort(m)}</i>
             <div class="track thin"><div class="fill" style="width:${Math.max((p.v||0)/scale*100,0.6)}%;background:${m===A?'var(--ink)':'#B9BFD2'}"></div></div>
@@ -985,7 +990,7 @@ function openDriver(cod){
   const i = ORDER.findIndex(d=>d.cod===cod);
   if(i<0){
     /* motorista não está no mês selecionado: leva ao mês em que ele aparece */
-    const m = MESES.slice().reverse().find(mm=>DATASETS[mm].some(d=>d.cod===cod));
+    const m = MESES_FECH.slice().reverse().find(mm=>DATASETS[mm].some(d=>d.cod===cod)) || MESES[MESES.length-1];
     if(!m) return;
     MES = m; mesSel.value = m; renderMes(cod);
     setTab('tab-ind'); return;
@@ -1049,6 +1054,11 @@ function renderMes(keepCod){
   ATIVOS = DATA.filter(d=>isAvaliado(d) && !isManobrista(d));
   calcRanks();
   document.getElementById('per-lab').innerHTML = `${mlab(MES)} · <strong>${DATA.length} motoristas</strong>`;
+  const pv = PREVIA[MES], ban = document.getElementById('previa-ban');
+  ban.hidden = !pv;
+  if(pv) ban.innerHTML = `<b>${esc(mlab(MES))}</b> — relatório emitido em ${esc(pv.emissao||'—')}, antes do fechamento de média: `
+    + `só bônus de viagem (sem prêmio por economia, bônus por média, km e posição no grupo). Lançamentos até a emissão. `
+    + `Verificações, pagamento indevido e confrontos valem normalmente; o mês fica fora da Evolução e do histórico até o fechamento.`;
   renderKPIs(); renderComposicao(); renderGrupos(); renderFora(); renderIndevido(); renderIndevidoCallout(); renderVerif(); renderRelControles(); renderRank(); renderTable(); renderConfrontos();
   renderIndividual(keepCod);
 }

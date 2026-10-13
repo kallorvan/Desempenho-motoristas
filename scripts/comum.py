@@ -49,12 +49,13 @@ def totais(rows):
          'totalBonif': s('bonif'), 'viagens': float(s('viag')), 'viagensVira': float(s('vira')),
          'km': float(s('km'))}
     medias = [r['media'] for r in rows if r['media'] > 0]
-    t['media'] = round(sum(medias) / len(medias), 6)  # simples, como o AVERAGEIFS do modelo
-    t['pctBonifFrete'] = round(t['totalBonif'] / t['frete'], 6)
-    t['freteMedioViagem'] = round(t['frete'] / t['viagens'], 6)
-    t['bonifMediaViagem'] = round(t['totalBonif'] / t['viagensVira'], 6)
-    t['fretePorKm'] = round(t['frete'] / t['km'], 6)
-    t['bonifPorKm'] = round(t['totalBonif'] / t['km'], 6)
+    t['media'] = round(sum(medias) / len(medias), 6) if medias else 0.0  # simples, como o AVERAGEIFS do modelo
+    q = lambda a, b: round(a / b, 6) if b else 0.0  # noqa: E731 — prévia: sem km
+    t['pctBonifFrete'] = q(t['totalBonif'], t['frete'])
+    t['freteMedioViagem'] = q(t['frete'], t['viagens'])
+    t['bonifMediaViagem'] = q(t['totalBonif'], t['viagensVira'])
+    t['fretePorKm'] = q(t['frete'], t['km'])
+    t['bonifPorKm'] = q(t['totalBonif'], t['km'])
     t['partFrete'] = 1.0
     return t
 
