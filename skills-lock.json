@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "skills": {
+    "roteador-de-modelo": {
+      "source": "kallorvan/minhas-skills",
+      "sourceType": "github",
+      "skillPath": "skills/roteador-de-modelo/SKILL.md",
+      "computedHash": "eb8b75499bba6d5cdc3784c5185b04d9897fa5c4589a06e54037022472ba6075"
+    }
+  }
+}
