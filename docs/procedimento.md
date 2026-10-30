@@ -58,7 +58,9 @@ O Rodopar emite antes do fechamento de média um relatório só de bônus de via
 movimentações e o `RESUMO DO MOTORISTA`, sem `RESUMO PRÊMIO POR MÉDIA` e sem
 `TOTAL BÔNUS`. O `1_extrair.py` reconhece esse formato sozinho: grava o mês com
 premiação, km, média e posição zerados (grupo `SEM GRUPO`), usa o subtotal como bônus
-operacional e cria `dados/AAAA-MM.meta.json` (`previa`, data de emissão, arquivo).
+operacional e cria `dados/AAAA-MM.meta.json` (`previa`, data de emissão, período do
+relatório, último lançamento, arquivo). O painel mostra até que dia vão os dados de cada
+mês (prévia: fim do período do relatório; fechado: fim do período de viagens).
 No painel o mês aparece como "· prévia", com aviso no topo; KPIs de km e média ficam
 "—", sem comparação com o mês anterior; o critério dos 4.000 km não se aplica (fora
 só quem não tem frete); o mês **fica fora da Evolução e do histórico** do motorista.

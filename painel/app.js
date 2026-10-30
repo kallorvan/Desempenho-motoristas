@@ -9,6 +9,7 @@ const MSHORT   = __MSHORT__;
 /* prévia: mês lançado antes do fechamento de média (sem prêmio, km e média) — fica fora
    da Evolução e do histórico; os confrontos e verificações funcionam normalmente */
 const PREVIA   = __PREVIA__;
+const ATE      = __ATE__;   /* mês -> data até onde vão os dados (dd/mm/aaaa) */
 const MESES_FECH = MESES.filter(m=>!PREVIA[m]);
 const mlab  = m => MLABEL[m] || m;
 const mshort= m => MSHORT[m] || m;
@@ -76,7 +77,7 @@ const tagFora = d => isAvaliado(d) ? '' : `<span class="tagx fora" title="Abaixo
 
 /* ================= SELETOR DE MÊS ================= */
 const mesSel = document.getElementById('mes');
-mesSel.innerHTML = MESES.slice().reverse().map(m=>`<option value="${m}">${mlab(m)}</option>`).join('');
+mesSel.innerHTML = MESES.slice().reverse().map(m=>`<option value="${m}">${mlab(m)}${PREVIA[m] && ATE[m] ? ' até '+ATE[m].slice(0,5) : ''}</option>`).join('');
 mesSel.value = MES;
 mesSel.addEventListener('change',()=>{ MES = mesSel.value; renderMes(); });
 
@@ -1053,11 +1054,15 @@ function renderMes(keepCod){
   T    = TOTAIS[MES];
   ATIVOS = DATA.filter(d=>isAvaliado(d) && !isManobrista(d));
   calcRanks();
-  document.getElementById('per-lab').innerHTML = `${mlab(MES)} · <strong>${DATA.length} motoristas</strong>`;
+  document.getElementById('per-lab').innerHTML = `${mlab(MES)} · <strong>${DATA.length} motoristas</strong>`
+    + (ATE[MES] ? ` · <span class="ate">dados até <strong>${ATE[MES]}</strong></span>` : '');
   const pv = PREVIA[MES], ban = document.getElementById('previa-ban');
   ban.hidden = !pv;
-  if(pv) ban.innerHTML = `<b>${esc(mlab(MES))}</b> — relatório emitido em ${esc(pv.emissao||'—')}, antes do fechamento de média: `
-    + `só bônus de viagem (sem prêmio por economia, bônus por média, km e posição no grupo). Lançamentos até a emissão. `
+  if(pv) ban.innerHTML = `<b>${esc(mlab(MES))} — dados até ${esc(ATE[MES]||'—')}</b>`
+    + (pv.periodo && pv.periodo.length ? ` (período ${esc(pv.periodo[0])} a ${esc(pv.periodo[1])}` : ' (')
+    + (pv.ultimoLancamento ? `, último lançamento em ${esc(pv.ultimoLancamento)}` : '') + `). `
+    + `Relatório emitido em ${esc(pv.emissao||'—')}, antes do fechamento de média: `
+    + `só bônus de viagem (sem prêmio por economia, bônus por média, km e posição no grupo). `
     + `Verificações, pagamento indevido e confrontos valem normalmente; o mês fica fora da Evolução e do histórico até o fechamento.`;
   renderKPIs(); renderComposicao(); renderGrupos(); renderFora(); renderIndevido(); renderIndevidoCallout(); renderVerif(); renderRelControles(); renderRank(); renderTable(); renderConfrontos();
   renderIndividual(keepCod);
