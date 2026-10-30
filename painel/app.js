@@ -706,7 +706,7 @@ function renderConfrontos(){
     ['Com rota de carregamento', tot(c=>c.local), 'um dos lançamentos é rota local com valor de viagem', 'k1'],
     ['Frete repetido', 'R$ '+compact(cs.reduce((a,c)=>a+c.frete-Math.max(...c.itens.map(it=>it.x.frete)),0)), 'valor que aparece a mais nas duplicidades', 'k3'],
     ['Bônus de viagem envolvido', 'R$ '+brl(cs.reduce((a,c)=>a+c.bonus,0)), 'soma do bônus pago nos lançamentos em confronto', 'k4'],
-    ...(COLAB.db ? [(r=>['Checados', `${r.f} de ${r.n}`, 'verificados ou corrigidos no Rodopar', 'k2'])(ckResumo(cs.map(c=>ckChaveCF(MES,c.cte))))] : [])
+    ...(COLAB.modo ? [(r=>['Checados', `${r.f} de ${r.n}`, 'verificados ou corrigidos no Rodopar', 'k2'])(ckResumo(cs.map(c=>ckChaveCF(MES,c.cte))))] : [])
   ].map(([l,v,s,c])=>`<div class="kpi ${c}"><div class="lab">${l}</div><div class="val"><span class="num">${v}</span></div><div class="sub">${s}</div></div>`).join('');
   const q = document.getElementById('cf-q').value.trim().toLowerCase(), f = document.getElementById('cf-f').value;
   const vis = cs.filter(c=> (f==='todos' || (f==='mesmo'&&c.mesmo) || (f==='entre'&&!c.mesmo) || (f==='trecho'&&c.trecho) || (f==='outro'&&!c.trecho) || (f==='local'&&c.local))
@@ -765,7 +765,7 @@ function renderIndevido(){
       <div><div class="lab">Carregamento devido</div><div class="val num">R$ ${brl(T0.devido)}</div></div>
       <div><div class="lab">A recuperar</div><div class="val num rec">R$ ${brl(T0.recuperar)}</div></div>
       <div><div class="lab">Viagens contadas a mais</div><div class="val num">${T0.vg}</div></div>
-      ${COLAB.db ? (r=>`<div><div class="lab">Checados</div><div class="val num">${r.f} de ${r.n}</div></div>`)(ckResumo(A.itens.map(i=>ckChavePI(MES,i)))) : ''}
+      ${COLAB.modo ? (r=>`<div><div class="lab">Checados</div><div class="val num">${r.f} de ${r.n}</div></div>`)(ckResumo(A.itens.map(i=>ckChavePI(MES,i)))) : ''}
     </div>
     <div style="overflow-x:auto"><table class="ind-t">
       <thead><tr><th>Motorista</th><th>Motivo</th><th>Lanç.</th><th>Valor pago</th><th>Carregamento devido</th><th>A recuperar</th><th>VG</th></tr></thead>
@@ -983,12 +983,17 @@ document.getElementById('ev-list').addEventListener('keydown',e=>{
 });
 
 /* ================= COLABORAÇÃO: usuário, quem está online, checagens e registro =================
-   Só no painel publicado (recursos db/room/user da plataforma). Aberto direto do computador,
-   o painel funciona como antes, sem esses controles. Identificação simples, como pedido: cada
-   pessoa escolhe o próprio nome na lista que o administrador mantém. */
+   Dois modos, escolhidos sozinhos:
+   - "db": painel publicado no claude.ai (recursos db/room/user da plataforma);
+   - "pasta": arquivo aberto no Edge/Chrome do computador, gravando numa pasta do Teams
+     sincronizada pelo OneDrive (File System Access do navegador, com autorização da pessoa).
+   Sem nenhum dos dois, o painel funciona como antes, sem esses controles. Identificação
+   simples, como pedido: cada pessoa escolhe o próprio nome na lista do administrador. */
 const CK_STATUS = [['pendente','Pendente'],['verificando','Em verificação'],['ok','Verificado — sem correção'],['corrigido','Corrigido no Rodopar']];
 const CK_LAB = Object.fromEntries(CK_STATUS);
-const COLAB = {db:null, room:null, user:null, admin:false, usuarios:[], checks:{}, log:[], online:[]};
+const ONLINE_MIN = 5;   /* modo pasta: "online" = visto nos últimos ONLINE_MIN minutos */
+const COLAB = {modo:'', db:null, room:null, user:null, pasta:null, pastaPendente:null, suportePasta:false,
+  adminPlataforma:false, usuarios:[], checks:{}, log:[], peers:[], vistos:[]};
 let EU = (()=>{ try{ return localStorage.getItem('painel.usuario')||''; }catch(e){ return ''; } })();
 const ckSan = s => String(s).replace(/[^A-Za-z0-9_.~:@+-]/g,'_').slice(0,190);
 const ckChavePI = (m,it)=> ckSan(`pi_${m}_${it.cod}_${it.doc}_${it.cte}`);
@@ -996,9 +1001,15 @@ const ckChaveCF = (m,cte)=> ckSan(`cf_${m}_${cte}`);
 const nomeUsuario = id => (COLAB.usuarios.find(u=>u.id===id)||{}).nome || '';
 const quando = iso => { try{ return new Date(iso).toLocaleString('pt-BR',{dateStyle:'short',timeStyle:'short'}); }catch(e){ return iso||''; } };
 const ckOf = k => COLAB.checks[k] || null;
+const novoId = p => p + Date.now().toString(36) + Math.random().toString(36).slice(2,7);
+/* administrador: no painel publicado, quem é Editor; na pasta, quem está marcado como
+   administrador na lista (com a lista vazia, qualquer um cadastra o primeiro) */
+const ehAdmin = () => COLAB.modo==='db' ? COLAB.adminPlataforma
+  : COLAB.modo==='pasta' ? (!COLAB.usuarios.length || !!(COLAB.usuarios.find(u=>u.id===EU)||{}).admin) : false;
+
 /* selo + botão de checagem de um item (pagamento indevido ou confronto) */
 function ckHtml(chave, tipo, mes, desc){
-  if(!COLAB.db) return '';
+  if(!COLAB.modo) return '';
   const c = ckOf(chave), st = c ? c.status : 'pendente';
   return `<span class="ck"><span class="ck-b ${esc(st)}">${esc(CK_LAB[st]||st)}</span>`
     + (c && c.usuario ? `<span class="ck-o">${esc(nomeUsuario(c.usuario)||'—')} · ${esc(quando(c.quando))}${c.obs ? ' · '+esc(c.obs) : ''}</span>` : '')
@@ -1008,83 +1019,191 @@ function ckResumo(chaves){
   const n = chaves.length, f = chaves.filter(k=>{ const c = ckOf(k); return c && (c.status==='ok' || c.status==='corrigido'); }).length;
   return {n, f};
 }
-async function registrar(ev){
-  if(!COLAB.db) return;
-  await COLAB.db.collection('registro').add(Object.assign({quando:new Date().toISOString(), usuario:EU||''}, ev));
+
+/* ---------------- modo pasta: arquivos JSON na pasta do Teams ----------------
+   painel-dados/usuarios.json         lista de usuários (só administradores alteram)
+   painel-dados/registro/<id>.json    eventos de cada pessoa, só acréscimos (sem conflito
+                                      de sincronização entre pessoas; cópias de conflito do
+                                      OneDrive também são lidas e juntadas pelo id do evento)
+   painel-dados/online/<id>.json      "visto por último", renovado a cada minuto */
+const IDB = {
+  abrir(){ return new Promise((ok,er)=>{ const r = indexedDB.open('painel-motoristas',1);
+    r.onupgradeneeded = ()=> r.result.createObjectStore('kv'); r.onsuccess = ()=> ok(r.result); r.onerror = ()=> er(r.error); }); },
+  async get(k){ const d = await IDB.abrir(); return new Promise(ok=>{ const r = d.transaction('kv').objectStore('kv').get(k); r.onsuccess = ()=> ok(r.result); r.onerror = ()=> ok(null); }); },
+  async set(k,v){ const d = await IDB.abrir(); return new Promise(ok=>{ const t = d.transaction('kv','readwrite'); t.objectStore('kv').put(v,k); t.oncomplete = ()=> ok(); t.onerror = ()=> ok(); }); }
+};
+async function pDir(...nomes){ let d = await COLAB.pasta.getDirectoryHandle('painel-dados',{create:true});
+  for(const n of nomes) d = await d.getDirectoryHandle(n,{create:true}); return d; }
+async function pLer(dir, nome){ try{ const f = await (await dir.getFileHandle(nome)).getFile(); return JSON.parse(await f.text()); }catch(e){ return null; } }
+async function pGravar(dir, nome, obj){ const w = await (await dir.getFileHandle(nome,{create:true})).createWritable();
+  await w.write(JSON.stringify(obj, null, 1)); await w.close(); }
+async function pLerTodos(dir){ const out = [];
+  for await (const [nome, h] of dir.entries()) if(h.kind==='file' && nome.toLowerCase().endsWith('.json')) out.push(await pLer(dir, nome));
+  return out.filter(Boolean); }
+function derivarChecks(){
+  const ch = {};
+  for(const r of COLAB.log.slice().reverse()) if(r.acao==='checagem' && r.chave)
+    ch[r.chave] = {tipo:r.tipo, mes:r.mes, ref:r.ref, status:r.para, obs:r.obs||'', usuario:r.usuario, quando:r.quando};
+  COLAB.checks = ch;
+}
+let PASTA_LENDO = false;
+async function pastaAtualizar(){
+  if(COLAB.modo!=='pasta' || PASTA_LENDO) return;
+  PASTA_LENDO = true;
+  try{
+    const base = await pDir();
+    const u = await pLer(base, 'usuarios.json');
+    COLAB.usuarios = u && Array.isArray(u.lista) ? u.lista : [];
+    const vistos = new Map();
+    for(const arr of await pLerTodos(await pDir('registro'))) if(Array.isArray(arr)) for(const r of arr) if(r && r.id) vistos.set(r.id, r);
+    COLAB.log = [...vistos.values()].sort((a,b)=> (a.quando<b.quando) - (a.quando>b.quando));
+    derivarChecks();
+    const lim = Date.now() - ONLINE_MIN*60000;
+    COLAB.vistos = (await pLerTodos(await pDir('online'))).filter(o=>o.usuario && Date.parse(o.visto)>lim);
+    colabRender();
+  }catch(e){
+    COLAB.pastaErro = 'Não foi possível ler a pasta. Confira se ela continua sincronizada e reconecte.';
+    colabRender();
+  }finally{ PASTA_LENDO = false; }
+}
+async function pastaBatida(){
+  if(COLAB.modo!=='pasta' || !EU || document.visibilityState!=='visible') return;
+  try{ await pGravar(await pDir('online'), ckSan(EU)+'.json', {usuario:EU, visto:new Date().toISOString()}); }catch(e){}
+}
+let PASTA_TIMER = null;
+async function pastaIniciar(h){
+  COLAB.pasta = h; COLAB.pastaPendente = null; COLAB.pastaErro = ''; COLAB.modo = 'pasta';
+  await pastaBatida(); await pastaAtualizar();
+  if(!PASTA_TIMER) PASTA_TIMER = setInterval(()=>{ pastaAtualizar(); pastaBatida(); }, 30000);
+}
+async function conectarPasta(){
+  try{
+    const h = COLAB.pastaPendente && (await COLAB.pastaPendente.requestPermission({mode:'readwrite'}))==='granted'
+      ? COLAB.pastaPendente : await window.showDirectoryPicker({id:'painel-motoristas', mode:'readwrite'});
+    try{ await IDB.set('pasta', h); }catch(e){}
+    await pastaIniciar(h);
+  }catch(e){ /* a pessoa cancelou a escolha da pasta */ }
+}
+document.addEventListener('visibilitychange',()=>{ if(document.visibilityState==='visible'){ pastaAtualizar(); pastaBatida(); } });
+
+/* ---------------- gravações (os dois modos) ---------------- */
+async function bkUsuarios(lista){
+  if(COLAB.modo==='db') return COLAB.db.doc('config/usuarios').set({lista, atualizado:new Date().toISOString(), por:EU||''});
+  await pGravar(await pDir(), 'usuarios.json', {lista, atualizado:new Date().toISOString(), por:EU||''});
+  COLAB.usuarios = lista;
+}
+async function bkRegistrar(ev){
+  const r = Object.assign({id:novoId('e'), quando:new Date().toISOString(), usuario:EU||''}, ev);
+  if(COLAB.modo==='db') return COLAB.db.collection('registro').add(r);
+  const dir = await pDir('registro'), nome = ckSan(EU || 'administrador') + '.json';
+  const arr = (await pLer(dir, nome)) || [];
+  arr.push(r); await pGravar(dir, nome, arr);
+  COLAB.log = [r, ...COLAB.log]; derivarChecks();
+}
+async function bkChecagem(chave, doc){
+  if(COLAB.modo==='db') return COLAB.db.doc('checagens/'+chave).set(doc);
+  /* na pasta a situação de cada item sai do próprio registro (último evento do item) */
 }
 
-/* ---- cabeçalho: escolha do nome e quem está online ---- */
+/* ---------------- cabeçalho: nome, online, administrador, pasta ---------------- */
+function colabRender(){ renderColab(); renderCkAll(); renderRegistro(); if(dlgUs.open) renderUsuarios(); }
 function renderColab(){
   const el = document.getElementById('colab');
-  if(!COLAB.db){ el.hidden = true; return; }
+  if(!COLAB.modo){
+    if(COLAB.suportePasta){
+      el.hidden = false;
+      el.innerHTML = `<button type="button" class="chip" id="colab-pasta">${COLAB.pastaPendente ? 'Reconectar pasta do Teams' : 'Conectar pasta do Teams'}</button>`;
+    }else el.hidden = true;
+    return;
+  }
   el.hidden = false;
   const ativos = COLAB.usuarios.filter(u=>u.ativo!==false);
-  if(EU && !COLAB.usuarios.some(u=>u.id===EU)) EU = '';
+  if(EU && COLAB.usuarios.length && !COLAB.usuarios.some(u=>u.id===EU)) EU = '';
   el.innerHTML = `<label class="on-l">Você:
       <select id="colab-eu" aria-label="Escolha seu nome">
         <option value="">${ativos.length ? 'Escolha seu nome' : 'Lista de usuários vazia'}</option>
         ${ativos.map(u=>`<option value="${esc(u.id)}" ${u.id===EU?'selected':''}>${esc(u.nome)}</option>`).join('')}
       </select></label>
     <span class="on-l" id="colab-on"></span>
-    ${COLAB.admin ? '<button type="button" class="chip" id="colab-adm">Usuários</button>' : ''}`;
+    ${ehAdmin() ? '<button type="button" class="chip" id="colab-adm">Usuários</button>' : ''}
+    ${COLAB.modo==='pasta' ? `<button type="button" class="chip" id="colab-pasta" title="Pasta onde ficam os dados do painel">Pasta: ${esc(COLAB.pasta.name)}</button>` : ''}
+    ${COLAB.pastaErro ? `<span class="on-l" style="color:#B3243F">${esc(COLAB.pastaErro)}</span>` : ''}`;
   renderOnline();
 }
 function renderOnline(){
   const box = document.getElementById('colab-on'); if(!box) return;
-  const vistos = new Map();
-  for(const p of COLAB.online){
-    if(p.kind!=='viewer') continue;
-    const id = p.presence && typeof p.presence.usuario==='string' ? p.presence.usuario : '';
-    const k = id || ('peer:'+p.peer);
-    if(!vistos.has(k)) vistos.set(k, {nome: nomeUsuario(id) || 'sem nome escolhido', eu: p.isMe});
-    else if(p.isMe) vistos.get(k).eu = true;
+  const l = new Map();
+  if(COLAB.modo==='db'){
+    for(const p of COLAB.peers){
+      if(p.kind!=='viewer') continue;
+      const id = p.presence && typeof p.presence.usuario==='string' ? p.presence.usuario : '';
+      const k = id || ('peer:'+p.peer);
+      if(!l.has(k)) l.set(k, {nome: nomeUsuario(id) || 'sem nome escolhido', eu: p.isMe});
+      else if(p.isMe) l.get(k).eu = true;
+    }
+  }else{
+    for(const o of COLAB.vistos) l.set(o.usuario, {nome: nomeUsuario(o.usuario) || 'usuário removido', eu: o.usuario===EU});
+    if(EU && !l.has(EU)) l.set(EU, {nome: nomeUsuario(EU), eu:true});
   }
-  const l = [...vistos.values()];
-  box.innerHTML = l.length ? 'Online agora: ' + l.map(u=>`<span class="on-u">${esc(u.nome)}${u.eu?' (você)':''}</span>`).join('') : '';
+  const v = [...l.values()];
+  box.innerHTML = v.length ? (COLAB.modo==='db' ? 'Online agora: ' : `Ativos (${ONLINE_MIN} min): `)
+    + v.map(u=>`<span class="on-u">${esc(u.nome)}${u.eu?' (você)':''}</span>`).join('') : '';
 }
 document.getElementById('colab').addEventListener('change',e=>{
   if(e.target.id!=='colab-eu') return;
   EU = e.target.value;
   try{ localStorage.setItem('painel.usuario', EU); }catch(err){}
   if(COLAB.room) COLAB.room.presence({usuario: EU || null}).catch(()=>{});
+  renderColab(); pastaBatida().then(pastaAtualizar);
 });
-document.getElementById('colab').addEventListener('click',e=>{ if(e.target.closest('#colab-adm')) abrirUsuarios(); });
+document.getElementById('colab').addEventListener('click',e=>{
+  if(e.target.closest('#colab-adm')) abrirUsuarios();
+  if(e.target.closest('#colab-pasta')) conectarPasta();
+});
 
-/* ---- administrador: lista de usuários ---- */
+/* ---------------- administrador: lista de usuários ---------------- */
 const dlgUs = document.getElementById('dlg-users');
 function renderUsuarios(){
+  const pasta = COLAB.modo==='pasta';
   document.getElementById('us-list').innerHTML = COLAB.usuarios.map(u=>`<div class="us-row ${u.ativo===false?'inativo':''}">
-      <span class="nm">${esc(u.nome)}</span>
-      <button type="button" class="chip" data-us="${esc(u.id)}">${u.ativo===false?'Reativar':'Desativar'}</button></div>`).join('')
-    || '<div class="ck-ref">Nenhum usuário cadastrado.</div>';
+      <span class="nm">${esc(u.nome)}${pasta && u.admin ? ' · <b>administrador</b>' : ''}</span>
+      <span style="display:flex;gap:6px">
+        ${pasta ? `<button type="button" class="chip" data-us="${esc(u.id)}" data-op="admin">${u.admin?'Tirar administrador':'Tornar administrador'}</button>` : ''}
+        <button type="button" class="chip" data-us="${esc(u.id)}" data-op="ativo">${u.ativo===false?'Reativar':'Desativar'}</button></span></div>`).join('')
+    || '<div class="ck-ref">Nenhum usuário cadastrado.' + (pasta ? ' O primeiro nome cadastrado fica como administrador.' : '') + '</div>';
 }
 function abrirUsuarios(){ document.getElementById('us-msg').textContent=''; renderUsuarios(); dlgUs.showModal(); }
 async function salvarUsuarios(lista, ev){
   const msg = document.getElementById('us-msg'); msg.textContent = 'Salvando…';
-  try{
-    await COLAB.db.doc('config/usuarios').set({lista, atualizado:new Date().toISOString(), por:EU||''});
-    await registrar(ev);
-    msg.textContent = '';
-  }catch(e){ msg.textContent = 'Não foi possível salvar. Só o administrador (Editor do painel) altera a lista.'; }
+  try{ await bkUsuarios(lista); await bkRegistrar(ev); msg.textContent = ''; colabRender(); pastaBatida(); }
+  catch(e){ msg.textContent = COLAB.modo==='db' ? 'Não foi possível salvar. Só o administrador (Editor do painel) altera a lista.'
+    : 'Não foi possível gravar na pasta. Confira se ela está sincronizada e se você pode editá-la.'; }
 }
 document.getElementById('us-add').addEventListener('click',()=>{
   const inp = document.getElementById('us-nome'), nome = inp.value.trim().replace(/\s+/g,' ');
   if(!nome) return;
   if(COLAB.usuarios.some(u=>u.nome.toLowerCase()===nome.toLowerCase())){ document.getElementById('us-msg').textContent='Esse nome já está na lista.'; return; }
-  const u = {id:'u'+Date.now().toString(36)+Math.random().toString(36).slice(2,6), nome, ativo:true};
+  const u = {id:novoId('u'), nome, ativo:true};
+  if(COLAB.modo==='pasta' && !COLAB.usuarios.length){ u.admin = true; if(!EU){ EU = u.id; try{ localStorage.setItem('painel.usuario', EU); }catch(e){} } }
   inp.value = '';
-  salvarUsuarios([...COLAB.usuarios, u], {acao:'usuario', tipo:'usuario', chave:u.id, ref:`Usuário cadastrado: ${nome}`, de:'', para:'ativo', obs:''});
+  salvarUsuarios([...COLAB.usuarios, u], {acao:'usuario', tipo:'usuario', chave:u.id, ref:`Usuário cadastrado: ${nome}${u.admin?' (administrador)':''}`, de:'', para:'ativo', obs:''});
 });
 document.getElementById('us-list').addEventListener('click',e=>{
   const b = e.target.closest('button[data-us]'); if(!b) return;
   const u = COLAB.usuarios.find(x=>x.id===b.dataset.us); if(!u) return;
+  if(b.dataset.op==='admin'){
+    const admin = !u.admin;
+    if(!admin && COLAB.usuarios.filter(x=>x.admin).length<=1){ document.getElementById('us-msg').textContent='A lista precisa de pelo menos um administrador.'; return; }
+    return salvarUsuarios(COLAB.usuarios.map(x=>x.id===u.id ? Object.assign({}, x, {admin}) : x),
+      {acao:'usuario', tipo:'usuario', chave:u.id, ref:`${u.nome} ${admin?'passou a ser administrador':'deixou de ser administrador'}`, de:'', para:'', obs:''});
+  }
   const ativo = u.ativo===false;
   salvarUsuarios(COLAB.usuarios.map(x=>x.id===u.id ? Object.assign({}, x, {ativo}) : x),
     {acao:'usuario', tipo:'usuario', chave:u.id, ref:`Usuário ${ativo?'reativado':'desativado'}: ${u.nome}`, de:ativo?'inativo':'ativo', para:ativo?'ativo':'inativo', obs:''});
 });
 document.getElementById('us-close').addEventListener('click',()=>dlgUs.close());
 
-/* ---- checagem de um item ---- */
+/* ---------------- checagem de um item ---------------- */
 const dlgCk = document.getElementById('dlg-ck');
 let CK_ATUAL = null;
 document.getElementById('ck-status').innerHTML = CK_STATUS.map(([v,l])=>`<option value="${v}">${l}</option>`).join('');
@@ -1112,14 +1231,13 @@ document.getElementById('ck-form').addEventListener('submit', async e=>{
   if(ant && ant.status===status && (ant.obs||'')===obs){ dlgCk.close(); return; }
   const btn = document.getElementById('ck-save'); btn.disabled = true; msg.textContent = 'Salvando…';
   try{
-    await COLAB.db.doc('checagens/'+CK_ATUAL.chave).set({tipo:CK_ATUAL.tipo, mes:CK_ATUAL.mes, ref:CK_ATUAL.desc,
-      status, obs, usuario:EU, quando:new Date().toISOString()});
-    await registrar({acao:'checagem', tipo:CK_ATUAL.tipo, mes:CK_ATUAL.mes, chave:CK_ATUAL.chave, ref:CK_ATUAL.desc,
+    await bkChecagem(CK_ATUAL.chave, {tipo:CK_ATUAL.tipo, mes:CK_ATUAL.mes, ref:CK_ATUAL.desc, status, obs, usuario:EU, quando:new Date().toISOString()});
+    await bkRegistrar({acao:'checagem', tipo:CK_ATUAL.tipo, mes:CK_ATUAL.mes, chave:CK_ATUAL.chave, ref:CK_ATUAL.desc,
       de: ant ? ant.status : 'pendente', para: status, obs});
-    msg.textContent = ''; dlgCk.close();
+    msg.textContent = ''; dlgCk.close(); colabRender();
   }catch(err){
-    msg.textContent = err && err.code==='invalid_argument'
-      ? 'Seu acesso ao painel é só de leitura. Peça ao administrador acesso de Colaborador.'
+    msg.textContent = COLAB.modo==='pasta' ? 'Não foi possível gravar na pasta. Confira se ela está sincronizada e se você pode editá-la.'
+      : err && err.code==='invalid_argument' ? 'Seu acesso ao painel é só de leitura. Peça ao administrador acesso de Colaborador.'
       : 'Não foi possível salvar agora. Tente de novo.';
   }finally{ btn.disabled = false; }
 });
@@ -1128,22 +1246,29 @@ document.addEventListener('click',e=>{
   e.stopPropagation(); abrirChecagem(b);
 }, true);
 
-/* ---- aba Registro ---- */
+/* ---------------- aba Registro ---------------- */
 const REG_ACAO = {checagem:'Checagem', usuario:'Usuários'};
 const REG_TIPO = {pi:'Pagamento indevido', cf:'Confronto', usuario:'Cadastro'};
+const regUsuario = r => nomeUsuario(r.usuario) || (r.tipo==='usuario' ? 'administrador' : '');
 function regFiltrado(){
   const q = document.getElementById('reg-q').value.trim().toLowerCase();
-  return COLAB.log.filter(r=> !q || [nomeUsuario(r.usuario), r.ref, r.obs, r.mes, CK_LAB[r.para]].join(' ').toLowerCase().includes(q));
+  return COLAB.log.filter(r=> !q || [regUsuario(r), r.ref, r.obs, r.mes, CK_LAB[r.para]].join(' ').toLowerCase().includes(q));
 }
 function renderRegistro(){
   const box = document.getElementById('registro'), note = document.getElementById('reg-note');
-  document.getElementById('reg-btn').disabled = !COLAB.db;
-  if(!COLAB.db){ note.textContent=''; box.innerHTML = '<div class="pad" style="color:var(--muted);font-size:12.5px">O registro funciona só no painel publicado. Aberto direto do computador, o painel mostra os dados sem checagens.</div>'; return; }
+  document.getElementById('reg-btn').disabled = !COLAB.modo;
+  if(!COLAB.modo){
+    note.textContent='';
+    box.innerHTML = `<div class="pad" style="color:var(--muted);font-size:12.5px">${COLAB.suportePasta
+      ? 'Para registrar checagens, clique em <b>Conectar pasta do Teams</b> no topo e escolha a pasta da equipe (sincronizada pelo OneDrive). O navegador pede autorização para o painel gravar nela.'
+      : 'Checagens e registro funcionam no painel publicado ou neste arquivo aberto no Edge ou no Chrome do computador, conectado à pasta do Teams.'}</div>`;
+    return;
+  }
   const rs = regFiltrado();
-  note.textContent = `${COLAB.log.length} registro(s) · mais recentes primeiro`;
+  note.textContent = `${COLAB.log.length} registro(s) · mais recentes primeiro` + (COLAB.modo==='pasta' ? ` · pasta ${COLAB.pasta.name}/painel-dados` : '');
   box.innerHTML = rs.length ? `<div style="overflow-x:auto"><table class="reg-t">
       <thead><tr><th>Quando</th><th>Usuário</th><th>Tipo</th><th>Mês</th><th>Item</th><th>De → para</th><th>Observações</th></tr></thead>
-      <tbody>${rs.map(r=>`<tr><td class="num">${esc(quando(r.quando))}</td><td>${esc(nomeUsuario(r.usuario)||(r.tipo==='usuario'?'administrador':'—'))}</td>
+      <tbody>${rs.map(r=>`<tr><td class="num">${esc(quando(r.quando))}</td><td>${esc(regUsuario(r)||'—')}</td>
         <td>${esc(REG_TIPO[r.tipo]||REG_ACAO[r.acao]||r.acao||'')}</td><td>${r.mes?esc(mshort(r.mes)):''}</td><td class="w">${esc(r.ref||'')}</td>
         <td>${esc(CK_LAB[r.de]||r.de||'—')} → ${esc(CK_LAB[r.para]||r.para||'—')}</td><td class="w">${esc(r.obs||'')}</td></tr>`).join('')}</tbody>
     </table></div>` : '<div class="pad" style="color:var(--muted);font-size:12.5px">Nenhuma alteração registrada.</div>';
@@ -1152,7 +1277,7 @@ document.getElementById('reg-q').addEventListener('input',renderRegistro);
 document.getElementById('reg-btn').addEventListener('click', async ()=>{
   const msg = document.getElementById('reg-msg'), hoje = new Date().toISOString().slice(0,10);
   const rows = [['Quando','Usuário','Tipo','Mês','Item','De','Para','Observações']].concat(
-    COLAB.log.map(r=>[quando(r.quando), nomeUsuario(r.usuario)||(r.tipo==='usuario'?'administrador':''), REG_TIPO[r.tipo]||REG_ACAO[r.acao]||'', r.mes?mshort(r.mes):'', r.ref||'',
+    COLAB.log.map(r=>[quando(r.quando), regUsuario(r), REG_TIPO[r.tipo]||REG_ACAO[r.acao]||'', r.mes?mshort(r.mes):'', r.ref||'',
       CK_LAB[r.de]||r.de||'', CK_LAB[r.para]||r.para||'', r.obs||'']));
   try{
     const nome = `Registro_Painel_Motoristas_${hoje}.xlsx`;
@@ -1161,24 +1286,32 @@ document.getElementById('reg-btn').addEventListener('click', async ()=>{
   }catch(e){ msg.textContent = e && e.code==='declined' ? 'Download cancelado.' : 'Não foi possível gerar o arquivo.'; }
 });
 
-/* ---- ligação com a plataforma ---- */
+/* ---------------- início: escolhe o modo ---------------- */
 function renderCkAll(){ renderIndevido(); renderConfrontos(); }
 (async function colabInit(){
-  if(!(window.claude && typeof window.claude.use==='function')){ renderRegistro(); return; }
-  const [db, room, user] = await Promise.all(['db','room','user'].map(n=>window.claude.use(n).catch(()=>null)));
-  COLAB.db = db; COLAB.room = room; COLAB.user = user;
-  if(user) COLAB.admin = await user.canEdit();
+  let db = null, room = null, user = null;
+  if(window.claude && typeof window.claude.use==='function')
+    [db, room, user] = await Promise.all(['db','room','user'].map(n=>window.claude.use(n).catch(()=>null)));
   if(db){
-    db.doc('config/usuarios').onSnapshot(s=>{ COLAB.usuarios = (s.exists && Array.isArray(s.data().lista)) ? s.data().lista : [];
-      renderColab(); if(dlgUs.open) renderUsuarios(); renderCkAll(); renderRegistro(); }, ()=>{});
+    COLAB.modo = 'db'; COLAB.db = db; COLAB.room = room; COLAB.user = user;
+    if(user) COLAB.adminPlataforma = await user.canEdit();
+    db.doc('config/usuarios').onSnapshot(s=>{ COLAB.usuarios = (s.exists && Array.isArray(s.data().lista)) ? s.data().lista : []; colabRender(); }, ()=>{});
     db.collection('checagens').onSnapshot(s=>{ COLAB.checks = Object.fromEntries(s.docs.map(d=>[d.id, d.data()])); renderCkAll(); }, ()=>{});
     db.collection('registro').orderBy('quando','desc').limit(1000).onSnapshot(s=>{ COLAB.log = s.docs.map(d=>d.data()); renderRegistro(); }, ()=>{});
+    if(room){
+      room.onPeers(ch=>{ COLAB.peers = ch.peers; renderOnline(); }, ()=>{});
+      if(EU) room.presence({usuario:EU}).catch(()=>{});
+    }
+    colabRender(); return;
   }
-  if(room){
-    room.onPeers(ch=>{ COLAB.online = ch.peers; renderOnline(); }, ()=>{});
-    if(EU) room.presence({usuario:EU}).catch(()=>{});
+  COLAB.suportePasta = typeof window.showDirectoryPicker === 'function';
+  if(COLAB.suportePasta){
+    try{
+      const h = await IDB.get('pasta');
+      if(h){ (await h.queryPermission({mode:'readwrite'}))==='granted' ? await pastaIniciar(h) : (COLAB.pastaPendente = h); }
+    }catch(e){}
   }
-  renderColab(); renderCkAll(); renderRegistro();
+  colabRender();
 })();
 
 /* ================= ABAS ================= */

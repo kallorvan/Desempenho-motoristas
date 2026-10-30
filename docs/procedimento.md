@@ -236,9 +236,19 @@ de referência), com etiqueta "fora do critério" e um card próprio na Visão g
 com o que foi pago a eles. **Os totais da frota continuam com todos** (foi pago).
 A planilha não muda — segue o modelo.
 
-**Usuários, online, checagens e registro (out/2026).** Só no painel publicado (recursos
-`db`, `room` e `user` da plataforma; aberto direto do computador o painel funciona sem
-eles). Identificação simples, pedida pelo usuário: cada pessoa escolhe o próprio nome
+**Usuários, online, checagens e registro (out/2026).** Dois modos, escolhidos sozinhos:
+no **painel publicado** (recursos `db`, `room` e `user` da plataforma) e no **arquivo HTML
+aberto no Edge/Chrome do computador conectado à pasta do Teams** (File System Access do
+navegador). No modo pasta, a pessoa clica em "Conectar pasta do Teams", escolhe a pasta
+da equipe sincronizada pelo OneDrive e autoriza; o navegador lembra a pasta. Os dados
+ficam em `painel-dados/` dentro dela: `usuarios.json` (lista; administradores marcados
+na própria lista, o primeiro cadastrado é administrador), `registro/<id do usuário>.json`
+(eventos de cada pessoa, só acréscimos — evita conflito de sincronização; cópias de
+conflito do OneDrive também são lidas, juntando pelo id do evento) e
+`online/<id>.json` ("visto por último", renovado a cada minuto; "Ativos (5 min)"). A
+situação de cada checagem é o último evento do item. O painel relê a pasta a cada 30 s e
+ao voltar para a janela. Não funciona no app do Teams, no celular, no Firefox nem no
+Safari. Sem nenhum dos dois modos o painel funciona sem esses controles. Identificação simples, pedida pelo usuário: cada pessoa escolhe o próprio nome
 numa lista que o **administrador** mantém (botão "Usuários", visível para quem é Editor
 do painel; a regra de `db` `config` → `write: admin` impede os demais de alterar a lista).
 O cabeçalho mostra **quem está online** (presença do `room`). Em cada lançamento do
@@ -247,7 +257,7 @@ Em verificação · Verificado — sem correção · Corrigido no Rodopar) e obs
 quem e quando; os KPIs mostram "Checados x de y". Cada checagem e cada mudança na lista
 de usuários vai para a aba **Registro** (coleção `registro`), que baixa em .xlsx para
 guardar na pasta do SharePoint; o .xlsx da apuração e o relatório de verificações trazem
-as colunas da checagem. Banco: `config/usuarios` (lista), `checagens/<chave>`
+as colunas da checagem. Banco no painel publicado: `config/usuarios` (lista), `checagens/<chave>`
 (`pi_<mês>_<cód>_<doc>_<CT-e>` ou `cf_<mês>_<CT-e>`), `registro/<id>`. Para salvar
 checagens a pessoa precisa de acesso de **Colaborador** (Contributor) no compartilhamento;
 Viewer só lê.
