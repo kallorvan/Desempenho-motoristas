@@ -259,6 +259,43 @@ footer{margin-top:34px;font-size:11px;color:var(--muted);line-height:1.6;border-
 .previa-ban{margin:14px 0 0;padding:12px 16px;font-size:12.5px;line-height:1.5;color:var(--ink);background:#FBF1D9;
   border:1px solid var(--sand);border-left:4px solid #C9971F;border-radius:var(--r)}
 .previa-ban[hidden]{display:none}
+/* ---------- colaboração: usuário, online, checagens ---------- */
+.colab{display:flex;flex-wrap:wrap;align-items:center;justify-content:flex-end;gap:6px 10px;margin-top:6px;font-size:11.5px;width:100%}
+.colab[hidden]{display:none}
+.colab select{font-size:11.5px;font-weight:600;padding:4px 8px;border-radius:999px}
+.colab .on-l{display:inline-flex;flex-wrap:wrap;gap:4px;align-items:center;color:var(--muted)}
+.colab .on-u{display:inline-flex;align-items:center;gap:5px;background:#EAF6EF;color:#16683F;border-radius:999px;padding:2px 8px;font-weight:600}
+.colab .on-u::before{content:"";width:6px;height:6px;border-radius:50%;background:#1E8E5A}
+.colab .chip{padding:4px 10px}
+.ck{display:inline-flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:3px;white-space:normal}
+.ind-t .det span.ck{display:flex;margin:3px 0 6px} .ind-t .det .ck span{display:inline-block;white-space:normal}
+.ck-b{font-size:10px;font-weight:700;padding:2px 8px;border-radius:999px;background:#EEF0F5;color:var(--ink2);letter-spacing:.02em}
+.ck-b.verificando{background:#FBF1D9;color:#7A5A12} .ck-b.ok{background:#E3EEF9;color:#1D4E89} .ck-b.corrigido{background:#EAF6EF;color:#16683F}
+.ck-btn{appearance:none;border:1px solid var(--line);background:var(--card);color:var(--ink);font:inherit;font-size:10.5px;font-weight:600;
+  padding:2px 9px;border-radius:999px;cursor:pointer} .ck-btn:hover{border-color:var(--ink3)}
+.ck-btn:focus-visible{outline:2px solid var(--coral);outline-offset:2px}
+.ck-o{font-size:10.5px;color:var(--muted);max-width:520px;white-space:normal}
+.chip.on{background:var(--ink);border-color:var(--ink);color:#fff}
+.dlg{border:1px solid var(--line);border-radius:var(--r);padding:0;max-width:560px;width:calc(100% - 32px);color:var(--ink);background:var(--card)}
+.dlg::backdrop{background:rgba(28,37,67,.35)}
+.dlg form{padding:18px 20px;display:grid;gap:12px}
+.dlg h3{margin:0;font-size:16px;font-weight:800}
+.ck-ref{font-size:12px;color:var(--ink2);line-height:1.5;margin:0}
+.fl{display:grid;gap:5px;font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+.fl select,.fl textarea,.us-add input{font-family:inherit;font-size:13px;color:var(--ink);border:1px solid var(--line);border-radius:8px;padding:8px 10px;text-transform:none;letter-spacing:0;font-weight:500}
+.fl textarea{resize:vertical}
+.dlg-act{display:flex;justify-content:flex-end;gap:8px}
+.ck-msg{font-size:12px;color:#B3243F;min-height:0}
+.ck-hist{font-size:11.5px;color:var(--ink2);border-top:1px solid var(--line);padding-top:10px;display:grid;gap:7px;max-height:220px;overflow:auto}
+.ck-hist b{font-weight:700}
+.us-row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:7px 0;border-bottom:1px solid var(--line);font-size:13px}
+.us-row.inativo .nm{color:var(--muted);text-decoration:line-through}
+.us-add{display:flex;gap:8px} .us-add input{flex:1}
+.reg-t{width:100%;border-collapse:collapse;font-size:12px;min-width:860px}
+.reg-t th{background:#F6F7FB;color:var(--muted);font-size:10px;letter-spacing:.08em;text-transform:uppercase;font-weight:700;padding:9px 12px;text-align:left;white-space:nowrap}
+.reg-t td{padding:9px 12px;border-top:1px solid var(--line);vertical-align:top}
+.reg-t td.w{white-space:normal;min-width:220px}
+#reg-q{flex:1;min-width:200px}
 .pi-call{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:10px 18px;padding:14px 18px;
   background:var(--card);border:1px solid var(--line);border-left:4px solid var(--coral);border-radius:var(--r)}
 .pi-call .t{font-size:13px;font-weight:700} .pi-call .s{font-size:12px;color:var(--ink2);margin-top:3px}
@@ -390,6 +427,7 @@ footer{margin-top:34px;font-size:11px;color:var(--muted);line-height:1.6;border-
         <select id="mes" aria-label="Selecionar mês de fechamento"></select>
       </div>
       <div class="per-lab" id="per-lab"></div>
+      <div class="colab" id="colab" hidden></div>
     </div>
   </div>
   <nav class="tabs" role="tablist">
@@ -398,6 +436,7 @@ footer{margin-top:34px;font-size:11px;color:var(--muted);line-height:1.6;border-
     <button class="tab" role="tab" id="tab-evo" aria-selected="false" aria-controls="v-evo">Evolução</button>
     <button class="tab" role="tab" id="tab-pi" aria-selected="false" aria-controls="v-pi">Pagamento indevido</button>
     <button class="tab" role="tab" id="tab-conf" aria-selected="false" aria-controls="v-conf">Confrontos</button>
+    <button class="tab" role="tab" id="tab-reg" aria-selected="false" aria-controls="v-reg">Registro</button>
   </nav>
 </header>
 
@@ -633,6 +672,46 @@ footer{margin-top:34px;font-size:11px;color:var(--muted);line-height:1.6;border-
       <div id="cf-list"></div>
     </div>
   </section>
+
+  <section id="v-reg" role="tabpanel" aria-labelledby="tab-reg" class="hidden">
+    <div class="sec" style="margin-top:22px">
+      <div class="sec-h"><h2>Registro de alterações</h2><span class="sec-note" id="reg-note"></span></div>
+      <div class="tools rel-tools">
+        <input type="search" id="reg-q" placeholder="Buscar por usuário, motorista, CT-e, documento…" aria-label="Buscar no registro">
+        <button class="chip rel-btn" id="reg-btn" type="button">Baixar registro (.xlsx)</button>
+        <span class="rel-msg" id="reg-msg" role="status"></span>
+      </div>
+      <div class="card" id="registro"></div>
+      <div class="tbl-foot">Cada checagem salva e cada mudança na lista de usuários fica registrada aqui, com usuário, data e hora. Para guardar no SharePoint, baixe o registro (.xlsx) e salve na pasta do painel.</div>
+    </div>
+  </section>
+
+  <dialog class="dlg" id="dlg-ck" aria-labelledby="ck-tit">
+    <form method="dialog" id="ck-form">
+      <h3 id="ck-tit">Checagem</h3>
+      <div class="ck-ref" id="ck-ref"></div>
+      <label class="fl">Conclusão da checagem
+        <select id="ck-status"></select></label>
+      <label class="fl">Observações
+        <textarea id="ck-obs" rows="4" maxlength="2000" placeholder="O que foi verificado, o que foi corrigido no Rodopar, documento de ajuste…"></textarea></label>
+      <div class="ck-msg" id="ck-msg" role="status"></div>
+      <div class="dlg-act"><button type="button" class="chip" id="ck-cancel">Fechar</button>
+        <button type="submit" class="chip on" id="ck-save">Salvar checagem</button></div>
+      <div class="ck-hist" id="ck-hist"></div>
+    </form>
+  </dialog>
+
+  <dialog class="dlg" id="dlg-users" aria-labelledby="us-tit">
+    <form method="dialog" id="us-form">
+      <h3 id="us-tit">Usuários do painel</h3>
+      <p class="ck-ref">A lista que aparece para cada pessoa escolher o próprio nome. Quem sair da equipe pode ser desativado: o nome continua no registro antigo.</p>
+      <div id="us-list"></div>
+      <div class="us-add"><input type="text" id="us-nome" maxlength="60" placeholder="Nome do novo usuário" aria-label="Nome do novo usuário">
+        <button type="button" class="chip on" id="us-add">Adicionar</button></div>
+      <div class="ck-msg" id="us-msg" role="status"></div>
+      <div class="dlg-act"><button type="button" class="chip" id="us-close">Fechar</button></div>
+    </form>
+  </dialog>
 
   <footer>
     Fontes: <strong>Julho/2026</strong> — Indicadores_Produtividade_Motoristas_07_2026.xlsx (aba “Base Motorista”) · <strong>Agosto/2026</strong> — Planilha de comissão 08/2026 (PDF, 90 págs.), extraída para Desempenho_Motoristas_08_2026.xlsx · <strong>Setembro/2026</strong> — Bonus_Viagens__Premio_Media_09.2026 (PDF, 94 págs.), extraída para Indicadores_Produtividade_Motoristas_09_2026.xlsx.<br>

@@ -236,6 +236,22 @@ de referência), com etiqueta "fora do critério" e um card próprio na Visão g
 com o que foi pago a eles. **Os totais da frota continuam com todos** (foi pago).
 A planilha não muda — segue o modelo.
 
+**Usuários, online, checagens e registro (out/2026).** Só no painel publicado (recursos
+`db`, `room` e `user` da plataforma; aberto direto do computador o painel funciona sem
+eles). Identificação simples, pedida pelo usuário: cada pessoa escolhe o próprio nome
+numa lista que o **administrador** mantém (botão "Usuários", visível para quem é Editor
+do painel; a regra de `db` `config` → `write: admin` impede os demais de alterar a lista).
+O cabeçalho mostra **quem está online** (presença do `room`). Em cada lançamento do
+Pagamento indevido e em cada CT-e dos Confrontos há **checagem**: conclusão (Pendente ·
+Em verificação · Verificado — sem correção · Corrigido no Rodopar) e observações, com
+quem e quando; os KPIs mostram "Checados x de y". Cada checagem e cada mudança na lista
+de usuários vai para a aba **Registro** (coleção `registro`), que baixa em .xlsx para
+guardar na pasta do SharePoint; o .xlsx da apuração e o relatório de verificações trazem
+as colunas da checagem. Banco: `config/usuarios` (lista), `checagens/<chave>`
+(`pi_<mês>_<cód>_<doc>_<CT-e>` ou `cf_<mês>_<CT-e>`), `registro/<id>`. Para salvar
+checagens a pessoa precisa de acesso de **Colaborador** (Contributor) no compartilhamento;
+Viewer só lê.
+
 Abas: **Visão geral** (KPIs, composição, grupos, ranking, tabela) · **Por
 motorista** (ficha individual, comparação com a frota, histórico mês a mês) ·
 **Evolução** (frota mês a mês e variação por motorista) · **Pagamento indevido**
