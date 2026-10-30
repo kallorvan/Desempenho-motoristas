@@ -1,6 +1,11 @@
 {
  "previa": true,
- "emissao": "26/10/2026",
- "arquivo": "comissao_toliman_10.2026_ate25.pdf",
+ "emissao": "30/10/2026",
+ "periodo": [
+  "01/10/2026",
+  "30/10/2026"
+ ],
+ "ultimoLancamento": "30/10/2026",
+ "arquivo": "comissao_toliman_10.2026_ate30.pdf",
  "motivo": "relatório só de bônus de viagem: sem RESUMO PRÊMIO POR MÉDIA"
 }

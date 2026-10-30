@@ -6,6 +6,7 @@ Uso: python3 scripts/3_painel.py
 Junta painel/base.html (casca) e painel/app.js (lógica), injetando DATASETS,
 TOTAIS e os rótulos dos meses.
 """
+import calendar
 import json
 import sys
 from pathlib import Path
@@ -27,7 +28,7 @@ def js(obj):
 
 def main():
     arquivos = sorted((RAIZ / 'dados').glob('[0-9][0-9][0-9][0-9]-[0-9][0-9].json'))
-    datasets, tots, mlabel, mshort, lanc, previa = {}, {}, {}, {}, {}, {}
+    datasets, tots, mlabel, mshort, lanc, previa, ate = {}, {}, {}, {}, {}, {}, {}
     for f in arquivos:
         mes = f.stem
         rows = json.loads(f.read_text(encoding='utf8'))
@@ -52,12 +53,17 @@ def main():
                          'flags': oc, 'resumo': regras.resumo(oc), 'dup': regras.grupos_duplicados(mes),
                          'apur': regras.apuracao(mes, oc)}
         aaaa, mm = mes.split('-')
+        # até quando vão os dados do mês: na prévia, o fim do período do relatório; no
+        # fechamento, o fim do período de viagens (ou o último dia do mês)
+        per_v = (lanc.get(mes) or {}).get('periodo', {}).get('viagens')
+        fim = (previa.get(mes) or {}).get('periodo') or per_v or []
+        ate[mes] = fim[1] if len(fim) == 2 else f'{calendar.monthrange(int(aaaa), int(mm))[1]:02d}/{mm}/{aaaa}'
         nome = MESES[int(mm) - 1]
         mlabel[mes] = f'{nome} / {aaaa}' + (' · prévia' if mes in previa else '')
         mshort[mes] = f'{nome[:3]}/{aaaa[2:]}' + ('*' if mes in previa else '')
 
     app = (RAIZ / 'painel' / 'app.js').read_text(encoding='utf8')
-    for k, v in (('__PREVIA__', previa), ('__LANC__', lanc), ('__REGRAS__', regras.REGRAS), ('__KM_MIN__', KM_MIN), ('__DATASETS__', datasets), ('__TOTAIS__', tots), ('__MLABEL__', mlabel), ('__MSHORT__', mshort)):
+    for k, v in (('__ATE__', ate), ('__PREVIA__', previa), ('__LANC__', lanc), ('__REGRAS__', regras.REGRAS), ('__KM_MIN__', KM_MIN), ('__DATASETS__', datasets), ('__TOTAIS__', tots), ('__MLABEL__', mlabel), ('__MSHORT__', mshort)):
         assert app.count(k) == 1, f'placeholder {k} deve aparecer uma vez em app.js'
         app = app.replace(k, js(v))
     base = (RAIZ / 'painel' / 'base.html').read_text(encoding='utf8')

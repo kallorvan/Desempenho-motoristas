@@ -338,7 +338,13 @@ def main():
     meta = RAIZ / 'dados' / f'{mes}.meta.json'
     if eh_previa(txt):
         em = re.search(r'Data\s*:\s*(\d{2}/\d{2}/\d{4})', txt)
-        meta.write_text(json.dumps({'previa': True, 'emissao': em.group(1) if em else '', 'arquivo': pdf.name,
+        pe = re.search(r'PERÍODO DE (\d{2}/\d{2}/\d{4}) ATÉ (\d{2}/\d{2}/\d{4})', txt)
+        datas = [x['data'] for ls in movs.values() for x in ls if x['data']]
+        ult = max(datas, key=lambda d: d[6:] + d[3:5] + d[:2]) if datas else ''
+        meta.write_text(json.dumps({'previa': True, 'emissao': em.group(1) if em else '',
+                                    'periodo': list(pe.groups()) if pe else [],
+                                    'ultimoLancamento': ult[:6] + '20' + ult[6:] if ult else '',
+                                    'arquivo': pdf.name,
                                     'motivo': 'relatório só de bônus de viagem: sem RESUMO PRÊMIO POR MÉDIA'},
                                    ensure_ascii=False, indent=1) + '\n', encoding='utf8')
     elif meta.exists():
