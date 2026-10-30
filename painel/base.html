@@ -34,7 +34,7 @@ header.top{background:var(--card);border-bottom:1px solid var(--line);
 header.top.stuck{box-shadow:0 4px 14px rgba(28,37,67,.10)}
 /* celular: depois de rolar, o cabeçalho fica só com o mês e as abas */
 @media (max-width:820px){
-  header.top.compact .brand, header.top.compact .titles, header.top.compact .per-lab{display:none}
+  header.top.compact .brand, header.top.compact .titles, header.top.compact .per-lab, header.top.compact .colab{display:none}
   header.top.compact .top-in{padding-top:10px}
   header.top.compact nav.tabs{padding-top:6px}
 }
@@ -260,7 +260,7 @@ footer{margin-top:34px;font-size:11px;color:var(--muted);line-height:1.6;border-
   border:1px solid var(--sand);border-left:4px solid #C9971F;border-radius:var(--r)}
 .previa-ban[hidden]{display:none}
 /* ---------- colaboração: usuário, online, checagens ---------- */
-.colab{display:flex;flex-wrap:wrap;align-items:center;justify-content:flex-end;gap:6px 10px;margin-top:6px;font-size:11.5px;width:100%}
+.colab{display:flex;flex-wrap:wrap;align-items:center;justify-content:flex-end;gap:6px 10px;flex:1 1 100%;margin-top:-10px;font-size:11.5px}
 .colab[hidden]{display:none}
 .colab select{font-size:11.5px;font-weight:600;padding:4px 8px;border-radius:999px}
 .colab .on-l{display:inline-flex;flex-wrap:wrap;gap:4px;align-items:center;color:var(--muted)}
@@ -427,8 +427,8 @@ footer{margin-top:34px;font-size:11px;color:var(--muted);line-height:1.6;border-
         <select id="mes" aria-label="Selecionar mês de fechamento"></select>
       </div>
       <div class="per-lab" id="per-lab"></div>
-      <div class="colab" id="colab" hidden></div>
     </div>
+    <div class="colab" id="colab" hidden></div>
   </div>
   <nav class="tabs" role="tablist">
     <button class="tab" role="tab" id="tab-geral" aria-selected="true" aria-controls="v-geral">Visão geral</button>
