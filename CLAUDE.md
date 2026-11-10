@@ -64,5 +64,7 @@ coluna, estrutura do painel — está em:
 
 @docs/procedimento.md
 
+Para retomar o trabalho em outra sessão: `docs/handoff.md`.
+
 O histórico de cada fechamento fica em `docs/historico/`. Leia o do mês anterior
 antes de começar um mês novo; não precisa ler todos.

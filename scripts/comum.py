@@ -9,6 +9,7 @@ GRUPOS = {
     48: 'GRUPO VOLVO SCANIA CAÇAMBA',
     49: 'GRUPO METEOR VW',
     50: 'GRUPO VOLVO SCANIA GRANELEIRO',
+    54: 'GRUPO FH E OURO 6',   # novo em out/2026
 }
 # motorista sem média no mês (GRUPO DE MAIOR KM: 0 no PDF)
 SEM_GRUPO = (0, 'SEM GRUPO')
