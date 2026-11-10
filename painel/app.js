@@ -32,7 +32,8 @@ const SHORT = {
   'GRUPO VOLVO SCANIA TAMPA BAIXA':  [21,'Volvo/Scania Tampa Baixa'],
   'GRUPO METEOR VW':                 [49,'Meteor VW'],
   'GRUPO SCANIA E VOLVO 440':        [17,'Scania/Volvo 440'],
-  'GRUPO VOLVO BI TRUCK':            [18,'Volvo Bi-Truck']
+  'GRUPO VOLVO BI TRUCK':            [18,'Volvo Bi-Truck'],
+  'GRUPO FH E OURO 6':               [54,'FH e Ouro 6']
 };
 const gcode = g => SHORT[g] ? SHORT[g][0] : null;
 const short = g => SHORT[g] ? `<span class="gnum num">${SHORT[g][0]}</span>${SHORT[g][1]}` : (g||'—');

@@ -46,6 +46,11 @@ REGRAS = [
          titulo='Ordem cancelada (mesmo CT-e, trecho e motorista)',
          descricao='Uma das ordens do mesmo CT-e, trecho e motorista foi cancelada e ficou fora da contagem '
                    'de viagens e do pagamento.'),
+    dict(id='REPETIDO_MES_ANTERIOR', curto='Já no mês anterior', nivel='alerta',
+         titulo='Lançamento que já estava no fechamento do mês anterior',
+         descricao='Mesmo motorista, mesmo documento e mesmo CT-e já constavam nas movimentações do mês anterior '
+                   '(ex.: viagens do dia 30/09 no fechamento de out/2026, cujo período começa em 30/09). '
+                   'Possível frete e bônus contados e pagos nos dois meses.'),
     dict(id='RV_FERIAS', curto='RV férias', nivel='alerta', titulo='Viagem com Nº RV "FERIAS"',
          descricao='Lançamento com o Nº RV marcado como FERIAS: motorista em férias com viagem lançada.'),
     dict(id='TAXA_VIAGEM', curto='Taxa atípica', nivel='alerta', titulo='Bônus de viagem fora das taxas usuais',
@@ -171,6 +176,16 @@ def verificar(mes):
     por_cte = indice_cte(movs)
     conf = conferencia_rubricas(d, movs)
 
+    # movimentações do mês anterior, para achar lançamentos repetidos entre fechamentos
+    aaaa, mm = map(int, mes.split('-'))
+    ant = f'{aaaa - (mm == 1)}-{12 if mm == 1 else mm - 1:02d}'
+    carga_ant = carregar(ant)
+    no_ant = {}
+    if carga_ant:
+        for c, ls in carga_ant[1].items():
+            for x in ls:
+                no_ant.setdefault((c, x['doc'], x['cte']), x)
+
     per = d.get('periodo', {}).get('viagens')
     if per:
         ini, fim = (datetime.strptime(p, '%d/%m/%Y').date() for p in per)
@@ -194,6 +209,11 @@ def verificar(mes):
             if x['viagem'] > 0 and rota_carregamento(x['od']):
                 marca(cod, i, 'ROTA_CARREGAMENTO', f'{x["od"]} com bônus de viagem R$ {brl(x["viagem"])}'
                       + (' e contada como viagem (VG 1)' if x['vg'] else '') + ' — deveria ser carregamento')
+            y = no_ant.get((cod, x['doc'], x['cte']))
+            if y and any((x['frete'], x['viagem'], x['vira'], x['carreg'], x['lona'])):
+                marca(cod, i, 'REPETIDO_MES_ANTERIOR',
+                      f'doc. {x["doc"]} · CT-e {x["cte"]} ({x["data"]}) já no fechamento de {ant[5:]}/{ant[:4]} '
+                      f'(lá: viagem R$ {brl(y["viagem"])}, VG {y["vg"]}; aqui: viagem R$ {brl(x["viagem"])}, VG {x["vg"]})')
             if x['rv'] == 'FERIAS':
                 marca(cod, i, 'RV_FERIAS', f'Nº RV "FERIAS" com frete R$ {brl(x["frete"])} e bônus R$ {brl(x["viagem"])}')
             if x['frete'] > 0 and x['viagem'] > 0:
