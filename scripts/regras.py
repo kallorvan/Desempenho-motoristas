@@ -28,11 +28,20 @@ _ROTAS_CARREG = {frozenset(r) for r in ROTAS_CARREGAMENTO}
 # Valor de carregamento devido no lugar do bônus de viagem nessas rotas (definido pelo
 # usuário em out/2026: R$ 25,00 por lançamento) — usado na apuração de pagamento indevido.
 VALOR_CARREGAMENTO = 25.0
+# Viagem dividida (regra do usuário, nov/2026): dois motoristas no mesmo CT-e, com Nº RV
+# diferentes, um recebe 60% do frete do CT-e e o outro 40% (vale com trecho igual ou não).
+DIVISAO_VIAGEM = (60, 40)
+TOL_DIVISAO = 0.011                 # R$, arredondamento do Rodopar em cada parte
 
 REGRAS = [
     dict(id='CTE_FRETE_DUP', curto='CT-e duplicado', nivel='alerta', titulo='CT-e com frete em mais de um lançamento',
          descricao='O mesmo CT-e aparece com frete em dois ou mais lançamentos (do mesmo motorista ou de '
                    'outro) e cada um gerou bônus de viagem. Possível frete e bônus contados em dobro.'),
+    dict(id='VIAGEM_DIVIDIDA', curto='Viagem dividida', nivel='info',
+         titulo='Viagem dividida entre dois motoristas (60% / 40%)',
+         descricao='O mesmo CT-e aparece em dois motoristas com Nº RV diferentes e o frete dividido '
+                   '60% / 40% (as partes somam o frete do CT-e). É a regra de viagem dividida: '
+                   'cada um recebe o bônus sobre a própria parte. Vale com o trecho igual ou não.'),
     dict(id='ROTA_CARREGAMENTO', curto='Rota de carregamento', nivel='alerta',
          titulo='Valor de viagem em rota de carregamento',
          descricao='Rotas ' + ', '.join(f'{a.title()} x {b.title()}' for a, b in ROTAS_CARREGAMENTO) +
@@ -151,13 +160,30 @@ def indice_cte(movs):
     return por_cte
 
 
+def divisao(itens):
+    """[pct de cada item] se o grupo é uma viagem dividida 60/40, senão None.
+
+    itens: lançamentos (dicts) do mesmo CT-e. Exige 2 motoristas diferentes, Nº RV
+    diferentes e cada frete igual à sua parte do total (tolerância TOL_DIVISAO)."""
+    if len(itens) != 2:
+        return None
+    (ca, a), (cb, b) = itens
+    if ca == cb or a['rv'] == b['rv']:
+        return None
+    tot = a['frete'] + b['frete']
+    for pa, pb in (DIVISAO_VIAGEM, DIVISAO_VIAGEM[::-1]):
+        if abs(a['frete'] - tot * pa / 100) <= TOL_DIVISAO and abs(b['frete'] - tot * pb / 100) <= TOL_DIVISAO:
+            return [pa, pb]
+    return None
+
+
 def grupos_duplicados(mes):
     """[{cte, itens: [[cod, índice], ...]}] dos CT-e com frete em mais de um lançamento."""
     carga = carregar(mes)
     if carga is None:
         return []
     _, movs = carga
-    return [{'cte': cte, 'itens': [[c, i] for c, i, _ in v]}
+    return [{'cte': cte, 'itens': [[c, i] for c, i, _ in v], 'divisao': divisao([(c, x) for c, _, x in v])}
             for cte, v in indice_cte(movs).items() if len(v) > 1]
 
 
@@ -193,7 +219,15 @@ def verificar(mes):
     for cod, ls in movs.items():
         for i, x in enumerate(ls):
             outros = [o for o in por_cte.get(x['cte'], []) if (o[0], o[1]) != (cod, i)]
-            if x['frete'] > 0 and outros:
+            div = divisao([(c, o) for c, _, o in por_cte.get(x['cte'], [])]) if outros else None
+            if x['frete'] > 0 and div:
+                c2, _, o = outros[0]
+                meu = div[[k for k, (c, j, _) in enumerate(por_cte[x['cte']]) if (c, j) == (cod, i)][0]]
+                marca(cod, i, 'VIAGEM_DIVIDIDA',
+                      f'CT-e {x["cte"]}: {meu}% do frete (R$ {brl(x["frete"])}, bônus R$ {brl(x["viagem"])}) · '
+                      f'{100 - meu}% com {c2} doc. {o["doc"]} (frete R$ {brl(o["frete"])}, RV {o["rv"]}) · '
+                      f'frete do CT-e R$ {brl(x["frete"] + o["frete"])}')
+            elif x['frete'] > 0 and outros:
                 marca(cod, i, 'CTE_FRETE_DUP', 'CT-e ' + x['cte'] + ' também em ' + '; '.join(
                     f'{c} doc. {o["doc"]} (frete R$ {brl(o["frete"])}, bônus R$ {brl(o["viagem"])})' for c, _, o in outros))
             for c2, i2, o in outros:

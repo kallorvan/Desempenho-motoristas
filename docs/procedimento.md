@@ -98,6 +98,14 @@ estão no topo do arquivo.
   conta (regra do Rodopar). Rubrica que não confere no resumo fica fora do estorno e
   aparece como "não confirmado no resumo". Com valor pago → `ORDEM_CANCELADA_PAGA`
   (alerta); sem → `ORDEM_CANCELADA` (info).
+- **Viagem dividida (nov/2026):** dois motoristas no mesmo CT-e, com Nº RV diferentes,
+  dividem o frete **60% / 40%** — vale com o trecho igual ou diferente (ex.: 0611
+  Manhumirim x Machado 60% e 0605 Machado x Santos 40%, CT-e 01-1-135673). Cada um recebe
+  o bônus sobre a própria parte. `regras.divisao` confere que as duas partes são 60% e 40%
+  da soma (tolerância R$ 0,01) → `VIAGEM_DIVIDIDA` (info) no lugar de `CTE_FRETE_DUP`. Os
+  demais CT-e repetidos seguem como alerta. Em out/2026 os 7 CT-e duplicados são viagem
+  dividida; em set/2026 nenhum (frete inteiro nos dois, mantido como estava — mês fechado).
+  No Confrontos: selo "viagem dividida 60/40", linha "Parte do frete do CT-e" e filtro.
 - **Apuração de pagamento indevido de viagem** (`regras.apuracao`): por motorista,
   bônus de viagem em rota de carregamento (devido só o carregamento,
   `VALOR_CARREGAMENTO` = R$ 25,00 por lançamento, definido pelo usuário) e bônus de

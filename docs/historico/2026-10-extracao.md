@@ -35,8 +35,12 @@ prévia (`dados/2026-10.meta.json` apagado); o histórico das prévias segue em
 4. **Frete do resumo × linhas:** 0765 ADILSON PEREIRA ASSIS +R$ 8.765,76 (o mesmo das
    prévias) e 0605 −R$ 0,01. Mantido o resumo.
 5. **Eventos (`E:`) no carregamento:** 0616 e 0228 R$ 100,00; 0501 e 0659 R$ 813,49.
-6. **CT-e duplicados:** os 7 pares agora têm o frete dividido (ex.: 01-1-135673 — 0605
-   R$ 10.527,47 + 0611 R$ 7.018,32); o 01-1-135816 deixou de estar inteiro nos dois.
+6. **CT-e duplicados = viagem dividida 60/40:** os 7 CT-e repetidos têm dois motoristas,
+   Nº RV diferentes e frete dividido exatamente 60% / 40% (bônus sobre a própria parte).
+   Regra confirmada pelo usuário, inclusive com trecho diferente (01-1-135673: 0611
+   Manhumirim x Machado R$ 10.527,47 = 60% · 0605 Machado x Santos R$ 7.018,32 = 40%).
+   Viram `VIAGEM_DIVIDIDA` (info); nenhum alerta de CT-e duplicado no mês. Setembro fica
+   como está (20 CT-e com frete inteiro nos dois, mês fechado).
 7. Nº RV `FERIAS`: 0757 (doc. 3-001-022630 e 1-001-078743). 15 lançamentos com RV `PEND.`.
 8. Lona a R$ 15,00: 0606 e 0797.
 
@@ -58,5 +62,5 @@ prévia (`dados/2026-10.meta.json` apagado); o histórico das prévias segue em
 
 - Premiação zerada (achado 1): confirmar com o Rodopar antes de pagar.
 - Os 60 lançamentos de 30/09 (R$ 6.471,98) — pagar de novo ou estornar.
-- 0752 (R$ 50,00), regra do frete dividido em CT-e compartilhado, acertos de setembro
+- 0752 (R$ 50,00), acertos de setembro
   (V2/V3/V4) e os R$ 1.198,56 de pagamento indevido de setembro.
