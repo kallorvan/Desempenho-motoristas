@@ -1,4 +1,4 @@
-# Handoff — situação em 10/11/2026
+# Handoff — situação em 12/11/2026
 
 Para continuar em outra sessão: ler `CLAUDE.md`, `docs/procedimento.md` e
 `docs/historico/2026-10-extracao.md` (último mês fechado). Este arquivo resume o que
@@ -14,6 +14,11 @@ está feito, o que ficou em aberto e o que foi só discutido.
   Republicar com `python3 scripts/3_painel.py` e publicar o mesmo arquivo
   `saida/Dashboard_Produtividade_Motoristas.html` nessa URL **sem** passar
   `capabilities` (são mantidas da versão anterior).
+- **Confrontos (12/11):** abre no filtro "Precisam de conferência" (só CT-e fora da
+  divisão 60/40); as viagens divididas ficam no filtro próprio e em "Todos". O link "ver
+  lado a lado" escolhe o filtro conforme o CT-e. Em out/2026 a aba abre vazia com aviso
+  (os 7 CT-e são viagem dividida).
+- **Pagamento indevido (12/11):** KPIs do topo alinhados (rótulo no alto, valor na base).
 - **Modo pasta do Teams:** o HTML aberto no Edge/Chrome conecta a uma pasta sincronizada
   e grava em `painel-dados/` (usuários, registro, online). Ver `docs/procedimento.md`.
 - **Entradas e saídas não vão para o git** (`entrada/`, `saida/` ignorados: dados de
