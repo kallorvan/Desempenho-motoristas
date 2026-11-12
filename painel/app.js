@@ -736,7 +736,9 @@ function renderConfrontos(){
       </table></div>
       <div class="cf-foot">${(h=>h?h+'<br>':'')(ckHtml(ckChaveCF(MES,c.cte), 'cf', MES, `CT-e ${c.cte} · ${c.itens.map(it=>`${it.nome} (${it.cod}) doc. ${it.x.doc}`).join(' × ')}`))}${c.difs.length ? `Diferem: ${c.difs.map(d=>CF_CAMPOS.find(x=>x[0]===d)[1]).join(', ')}.` : 'Todos os campos iguais.'}
         ${c.vg>1 ? ` <strong>Viagem contada ${c.vg} vezes (VG).</strong>` : ''}</div>
-    </div>`).join('') || `<div class="card pad" style="color:var(--muted);font-size:12.5px">Nenhum confronto com esse filtro.</div>`;
+    </div>`).join('') || `<div class="card pad" style="color:var(--muted);font-size:12.5px">${f==='foradiv' && !q
+      ? `Nenhum CT-e precisa de conferência em ${mlab(MES)}.${tot(c=>c.div) ? ` ${tot(c=>c.div)} viagem(ns) dividida(s) 60/40 conferem com a regra — veja no filtro “Viagem dividida 60/40”.` : ''}`
+      : 'Nenhum confronto com esse filtro.'}</div>`;
   if(CF_ALVO){
     const el = document.getElementById('cf-'+CF_ALVO);
     if(el){ el.classList.add('alvo'); setTimeout(()=>{ const y = el.getBoundingClientRect().top + scrollY - topHdr.offsetHeight - 12; scrollTo({top:y,behavior:'smooth'}); },60); }
@@ -744,7 +746,8 @@ function renderConfrontos(){
   }
 }
 function abrirConfronto(cte){
-  document.getElementById('cf-q').value = ''; document.getElementById('cf-f').value = 'todos';
+  const alvo = confrontosDe(MES).find(c=>c.cte===cte);
+  document.getElementById('cf-q').value = ''; document.getElementById('cf-f').value = alvo && alvo.div ? 'div' : 'foradiv';
   CF_ALVO = cte; setTab('tab-conf'); renderConfrontos();
 }
 document.getElementById('cf-q').addEventListener('input',renderConfrontos);

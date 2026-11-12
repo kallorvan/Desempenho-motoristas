@@ -105,7 +105,9 @@ estão no topo do arquivo.
   da soma (tolerância R$ 0,01) → `VIAGEM_DIVIDIDA` (info) no lugar de `CTE_FRETE_DUP`. Os
   demais CT-e repetidos seguem como alerta. Em out/2026 os 7 CT-e duplicados são viagem
   dividida; em set/2026 nenhum (frete inteiro nos dois, mantido como estava — mês fechado).
-  No Confrontos: selo "viagem dividida 60/40", linha "Parte do frete do CT-e" e filtro.
+  No Confrontos: selo "viagem dividida 60/40", linha "Parte do frete do CT-e" e filtro. A aba
+  abre no filtro **"Precisam de conferência"** (nov/2026, pedido do usuário): só os CT-e fora da
+  divisão 60/40; as divididas ficam no filtro próprio e em "Todos os confrontos".
 - **Apuração de pagamento indevido de viagem** (`regras.apuracao`): por motorista,
   bônus de viagem em rota de carregamento (devido só o carregamento,
   `VALOR_CARREGAMENTO` = R$ 25,00 por lançamento, definido pelo usuário) e bônus de
