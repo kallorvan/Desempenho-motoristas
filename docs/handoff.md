@@ -19,6 +19,9 @@ está feito, o que ficou em aberto e o que foi só discutido.
   divisão 60/40); as viagens divididas ficam no filtro próprio e em "Todos". O link "ver
   lado a lado" escolhe o filtro conforme o CT-e. Em out/2026 a aba abre vazia com aviso
   (os 7 CT-e são viagem dividida).
+- **Favicon (13/11):** símbolo Dínamo do design system Tóliman Painéis
+  (https://claude.ai/artifact/K7VqZ9pLkqx3feMzpAHs2b, `dinamo-mark.svg`), em SVG + PNG 64 e
+  ícone 180 para celular, embutidos em `painel/base.html`.
 - **Pagamento indevido (12/11):** KPIs do topo alinhados (rótulo no alto, valor na base).
 - **Modo pasta do Teams:** o HTML aberto no Edge/Chrome conecta a uma pasta sincronizada
   e grava em `painel-dados/` (usuários, registro, online). Ver `docs/procedimento.md`.
