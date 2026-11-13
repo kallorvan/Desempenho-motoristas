@@ -1,4 +1,4 @@
-# Handoff — situação em 12/11/2026
+# Handoff — situação em 13/11/2026
 
 Para continuar em outra sessão: ler `CLAUDE.md`, `docs/procedimento.md` e
 `docs/historico/2026-10-extracao.md` (último mês fechado). Este arquivo resume o que
@@ -6,7 +6,8 @@ está feito, o que ficou em aberto e o que foi só discutido.
 
 ## Estado
 
-- **Meses no painel:** jul, ago, set e out/2026 (out = fechamento, não prévia).
+- **Meses no painel:** jul, ago, set, out/2026 (fechamento) e **nov/2026 — 1ª prévia,
+  01 a 10/11** (`docs/historico/2026-11-previa.md`; PDF × xlsx 100% iguais).
   `dados/*.json` + `dados/lancamentos/2026-09.json` e `2026-10.json` (jul e ago sem
   movimentações).
 - **Painel publicado:** https://claude.ai/artifact/XKHh5g1TCnweh6y7U1XBvv (privado, com
@@ -44,6 +45,10 @@ está feito, o que ficou em aberto e o que foi só discutido.
 3. 0752 ANANIAS — carregamento 2 × R$ 50,00 em 21/10 (doc. 1-001-078420).
 4. Setembro — acertos das versões V2/V3/V4 do PDF e R$ 1.198,56 de pagamento indevido.
 5. Outubro — pagamento indevido R$ 506,37 (7 lançamentos).
+6. Novembro — 3 pares de CT-e Varginha x Santos com frete inteiro em out (0752, 0357,
+   0735) e de novo em nov (0598, 0423, 0396): 6 lançamentos, frete R$ 34.754,40, bônus
+   R$ 608,22. Nenhuma regra pega (outro motorista, outro mês). Proposta ao usuário: regra
+   de CT-e com frete já no mês anterior.
 
 ## Discutido e **não** implantado (usuário pediu para deixar como está)
 
@@ -58,10 +63,10 @@ exceções autorizadas e reemissões. Proposta: duas etapas (carga + conferênci
 depois planilha, exceções e comparação de versões). Decisões em aberto: onde guardar,
 `.xls`, xlsx como fonte única.
 
-## Próximo mês (nov/2026)
+## Novembro (em andamento)
 
-1. `python3 scripts/1_extrair.py entrada/<arquivo>.pdf 2026-11` (prévia é detectada
-   sozinha). Se vier o xlsx, conferir; o `conferir_xlsx.py` acusa diferenças de resumo
+1. Próximas prévias / fechamento: `python3 scripts/1_extrair.py entrada/<arquivo>.pdf 2026-11`
+   e `comparar_versoes.py` prévia anterior × nova. Se vier o xlsx, conferir; o `conferir_xlsx.py` acusa diferenças de resumo
    falsas no layout novo (resumo numa linha só) — conferir os resumos à parte ou ajustar o
    script.
 2. `python3 scripts/2_planilha.py 2026-11` (só no fechamento), `python3 scripts/regras.py
