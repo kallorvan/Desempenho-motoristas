@@ -108,6 +108,13 @@ estão no topo do arquivo.
   No Confrontos: selo "viagem dividida 60/40", linha "Parte do frete do CT-e" e filtro. A aba
   abre no filtro **"Precisam de conferência"** (nov/2026, pedido do usuário): só os CT-e fora da
   divisão 60/40; as divididas ficam no filtro próprio e em "Todos os confrontos".
+- **CT-e do mês anterior (nov/2026):** CT-e com frete no mês que já teve frete no mês
+  anterior, em outro motorista ou outro documento → `CTE_MES_ANTERIOR` (alerta). O mesmo
+  motorista + documento + CT-e segue em `REPETIDO_MES_ANTERIOR`. Se as duas partes fecharem
+  60/40 (`regras.divisao`), vira `VIAGEM_DIVIDIDA` (info). No Confrontos o lançamento do mês
+  anterior entra como A, com a linha "Mês", o selo "mês anterior" e o filtro "Com o mês
+  anterior" (grupos com `anterior` e itens `[cód, índice, mês]` em `regras.grupos_duplicados`).
+  Ex.: nov/2026, 3 pares Varginha x Santos com o mesmo container e frete inteiro em out e nov.
 - **Apuração de pagamento indevido de viagem** (`regras.apuracao`): por motorista,
   bônus de viagem em rota de carregamento (devido só o carregamento,
   `VALOR_CARREGAMENTO` = R$ 25,00 por lançamento, definido pelo usuário) e bônus de

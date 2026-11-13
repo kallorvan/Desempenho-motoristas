@@ -32,6 +32,8 @@ está feito, o que ficou em aberto e o que foi só discutido.
 - Ordem cancelada (mesmo CT-e, trecho e motorista, VG 0): estorna tudo o que a linha
   pagou e entrou no resumo.
 - `REPETIDO_MES_ANTERIOR`: mesmo motorista + documento + CT-e já no mês anterior.
+- `CTE_MES_ANTERIOR` (nov/2026): CT-e com frete já no mês anterior em outro motorista ou
+  documento (sem fechar 60/40) → alerta; no Confrontos com o lançamento do mês anterior.
 - `VIAGEM_DIVIDIDA` (nov/2026): 2 motoristas no mesmo CT-e, Nº RV diferentes, frete
   60%/40% da soma (tol. R$ 0,01), trecho igual ou não → info; demais CT-e repetidos
   seguem como alerta. Setembro **não** se mexe (mês fechado, 20 CT-e com frete inteiro).
@@ -47,8 +49,9 @@ está feito, o que ficou em aberto e o que foi só discutido.
 5. Outubro — pagamento indevido R$ 506,37 (7 lançamentos).
 6. Novembro — 3 pares de CT-e Varginha x Santos com frete inteiro em out (0752, 0357,
    0735) e de novo em nov (0598, 0423, 0396): 6 lançamentos, frete R$ 34.754,40, bônus
-   R$ 608,22. Nenhuma regra pega (outro motorista, outro mês). Proposta ao usuário: regra
-   de CT-e com frete já no mês anterior.
+   R$ 608,22, frete inteiro (não é 60/40). Regra `CTE_MES_ANTERIOR` criada a pedido do
+   usuário; os casos aparecem nas verificações e no Confrontos. Falta a decisão sobre o
+   pagamento.
 
 ## Discutido e **não** implantado (usuário pediu para deixar como está)
 
