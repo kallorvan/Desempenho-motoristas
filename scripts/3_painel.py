@@ -3,11 +3,17 @@
 
 Uso: python3 scripts/3_painel.py
 
-Junta painel/base.html (casca) e painel/app.js (lógica), injetando DATASETS,
-TOTAIS e os rótulos dos meses.
+Junta painel/base.html (casca), painel/app.js (lógica) e painel/acesso.js (login e dados
+na pasta do SharePoint, Padrão de Sistemas Tóliman), injetando DATASETS, TOTAIS e os
+rótulos dos meses. Fontes (painel/fonts/), imagens (painel/img/) e painel/sistema.css vão
+embutidos: o HTML funciona sozinho, sem internet. A versão (vAAAA.MM.DD, data do build)
+aparece no rodapé.
 """
+import base64
 import calendar
+import datetime
 import json
+import re
 import sys
 from pathlib import Path
 
@@ -24,6 +30,18 @@ CAMPOS = ['cod', 'nome', 'grupo', 'frete', 'bonusOp', 'econ', 'premio', 'pctMedi
 
 def js(obj):
     return json.dumps(obj, ensure_ascii=False, separators=(',', ':'))
+
+
+TIPOS = {'.png': 'image/png', '.svg': 'image/svg+xml', '.woff2': 'font/woff2'}
+
+
+def embutir(html):
+    """Troca as referências a img/… e fonts/… pelo conteúdo do arquivo (data URI)."""
+    def troca(m):
+        arq = RAIZ / 'painel' / m.group(1)
+        dados = base64.b64encode(arq.read_bytes()).decode()
+        return f'data:{TIPOS[arq.suffix]};base64,{dados}'
+    return re.sub(r'(?<=["(])((?:img|fonts)/[\w.-]+\.(?:png|svg|woff2))(?=[")])', troca, html)
 
 
 def main():
@@ -68,7 +86,17 @@ def main():
         app = app.replace(k, js(v))
     base = (RAIZ / 'painel' / 'base.html').read_text(encoding='utf8')
     assert base.count('__APP_JS__') == 1
-    html = base.replace('__APP_JS__', app.rstrip('\n'))
+    acesso = (RAIZ / 'painel' / 'acesso.js').read_text(encoding='utf8')
+    assert app.count('__ACESSO_JS__') == 1
+    app = app.replace('__ACESSO_JS__', acesso.rstrip('\n'))
+    fonts = (RAIZ / 'painel' / 'fonts' / 'fonts.css').read_text(encoding='utf8')
+    sistema = (RAIZ / 'painel' / 'sistema.css').read_text(encoding='utf8')
+    for k, v in (('__FONTS_CSS__', fonts), ('__SISTEMA_CSS__', sistema)):
+        assert base.count(k) == 1, f'placeholder {k} deve aparecer uma vez em base.html'
+        base = base.replace(k, v.rstrip('\n'))
+    versao = 'v' + datetime.date.today().strftime('%Y.%m.%d')
+    html = base.replace('__APP_JS__', app.rstrip('\n').replace('__VERSAO__', versao))
+    html = embutir(html)
 
     (RAIZ / 'saida').mkdir(exist_ok=True)
     dest = RAIZ / 'saida' / 'Dashboard_Produtividade_Motoristas.html'

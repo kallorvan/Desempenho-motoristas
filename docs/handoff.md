@@ -1,4 +1,4 @@
-# Handoff — situação em 13/11/2026
+# Handoff — situação em 19/11/2026
 
 Para continuar em outra sessão: ler `CLAUDE.md`, `docs/procedimento.md` e
 `docs/historico/2026-10-extracao.md` (último mês fechado). Este arquivo resume o que
@@ -10,23 +10,28 @@ está feito, o que ficou em aberto e o que foi só discutido.
   01 a 10/11** (`docs/historico/2026-11-previa.md`; PDF × xlsx 100% iguais).
   `dados/*.json` + `dados/lancamentos/2026-09.json` e `2026-10.json` (jul e ago sem
   movimentações).
-- **Painel publicado:** https://claude.ai/artifact/XKHh5g1TCnweh6y7U1XBvv (privado, com
-  os recursos `db`, `room`, `user` e `downloads`; regra `config` → `write: admin`).
-  Republicar com `python3 scripts/3_painel.py` e publicar o mesmo arquivo
-  `saida/Dashboard_Produtividade_Motoristas.html` nessa URL **sem** passar
-  `capabilities` (são mantidas da versão anterior).
-- **Confrontos (12/11):** abre no filtro "Precisam de conferência" (só CT-e fora da
-  divisão 60/40); as viagens divididas ficam no filtro próprio e em "Todos". O link "ver
-  lado a lado" escolhe o filtro conforme o CT-e. Em out/2026 a aba abre vazia com aviso
-  (os 7 CT-e são viagem dividida).
-- **Favicon (13/11):** símbolo Dínamo do design system Tóliman Painéis
-  (https://claude.ai/artifact/K7VqZ9pLkqx3feMzpAHs2b, `dinamo-mark.svg`), em SVG + PNG 64 e
-  ícone 180 para celular, embutidos em `painel/base.html`.
-- **Pagamento indevido (12/11):** KPIs do topo alinhados (rótulo no alto, valor na base).
-- **Modo pasta do Teams:** o HTML aberto no Edge/Chrome conecta a uma pasta sincronizada
-  e grava em `painel-dados/` (usuários, registro, online). Ver `docs/procedimento.md`.
-- **Entradas e saídas não vão para o git** (`entrada/`, `saida/` ignorados: dados de
-  folha). O container é efêmero — PDF/xlsx precisam ser reenviados pelo usuário.
+- **Painel = sistema do Padrão de Sistemas Tóliman (19/11/2026)**
+  (https://claude.ai/artifact/NiiyT3so8rej7pLiy84L5M): visual novo (tokens, Barlow Condensed /
+  IBM Plex, degradês, componentes `s-`), login com senha (PBKDF2) e dados na pasta do sistema
+  **`Produtividade de Motoristas`** no SharePoint (`usuarios/`, `dados/`, `backups/`, `presenca/`,
+  `historico/`), bloqueio por checagem, 20 min de inatividade, versão no rodapé. Código em
+  `painel/acesso.js` e `painel/sistema.css`; fontes e imagens em `painel/fonts/` e `painel/img/`
+  (embutidas pelo `3_painel.py`). Teste: `node tests/pasta-sharepoint.mjs` (29 verificações, duas
+  pessoas). Detalhes em `docs/procedimento.md` (Painel) e uso/férias no `README.md`.
+- **Para colocar em uso (usuário):** criar a pasta `Produtividade de Motoristas` no canal do
+  Teams da equipe, só a equipe com edição; copiar para ela o
+  `saida/Dashboard_Produtividade_Motoristas.html`; abrir no Chrome/Edge, conectar a pasta, criar o
+  primeiro acesso (vira administrador), cadastrar um segundo administrador e os colegas. As
+  checagens de out/2026 (pasta `painel-dados` da equipe, 7 de 7) entram por Configurações ›
+  Importar da versão anterior.
+- **Painel publicado:** https://claude.ai/artifact/XKHh5g1TCnweh6y7U1XBvv agora é **só leitura**
+  (sem checagens; o banco `db` dele estava vazio). Republicar com `python3 scripts/3_painel.py` e
+  publicar o mesmo arquivo nessa URL.
+- **Modo pasta do Teams antigo** (`painel-dados/`, usuários sem senha): substituído; lido só para
+  leitura.
+- **Entradas e saídas não vão para o git** (`entrada/` e `saida/` ignorados: dados de
+  folha), **exceto** `saida/Dashboard_Produtividade_Motoristas.html`, que o padrão manda versionar
+  (o conteúdo já está em `dados/`). O container é efêmero — PDF/xlsx precisam ser reenviados pelo usuário.
 
 ## Regras do usuário implantadas (`scripts/regras.py`)
 

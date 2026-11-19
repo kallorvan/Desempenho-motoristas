@@ -16,8 +16,9 @@ todos ficam aqui.
 | `saida/Dashboard_Produtividade_Motoristas.html` | **Entregável 2.** Painel multimês, um arquivo só (não é um por mês). |
 
 O painel também existe publicado como artefato em
-https://claude.ai/code/artifact/f57fd579-3b88-4aaa-a4ce-8c8ec21542af — republicar
-o mesmo caminho de arquivo mantém a URL.
+https://claude.ai/artifact/XKHh5g1TCnweh6y7U1XBvv (só leitura) — republicar o mesmo
+caminho de arquivo mantém a URL. O uso com checagens é pelo HTML na pasta do sistema no
+SharePoint (ver Painel).
 
 ## Passos
 
@@ -46,7 +47,9 @@ o mesmo caminho de arquivo mantém a URL.
 5. **Montar a planilha** no modelo abaixo e recalcular as fórmulas com LibreOffice
    até não sobrar nenhum erro.
 6. **Atualizar o painel**: `python3 scripts/3_painel.py` lê todo `dados/*.json`;
-   revisar o rodapé de `painel/base.html` (fontes e notas do mês).
+   revisar o rodapé de `painel/base.html` (fontes e notas do mês); rodar
+   `node tests/pasta-sharepoint.mjs`; substituir o HTML na pasta do sistema no SharePoint
+   (quem estiver com ele aberto aperta F5).
 7. **Rodar as verificações**: `python3 scripts/regras.py AAAA-MM` e levar os alertas ao
    usuário junto com os achados do mês.
 8. **Registrar** um `docs/historico/AAAA-MM-extracao.md` com os achados do mês.
@@ -253,38 +256,50 @@ de referência), com etiqueta "fora do critério" e um card próprio na Visão g
 com o que foi pago a eles. **Os totais da frota continuam com todos** (foi pago).
 A planilha não muda — segue o modelo.
 
-**Usuários, online, checagens e registro (out/2026).** Dois modos, escolhidos sozinhos:
-no **painel publicado** (recursos `db`, `room` e `user` da plataforma) e no **arquivo HTML
-aberto no Edge/Chrome do computador conectado à pasta do Teams** (File System Access do
-navegador). No modo pasta, a pessoa clica em "Conectar pasta do Teams", escolhe a pasta
-da equipe sincronizada pelo OneDrive e autoriza; o navegador lembra a pasta. Os dados
-ficam em `painel-dados/` dentro dela: `usuarios.json` (lista; administradores marcados
-na própria lista, o primeiro cadastrado é administrador), `registro/<id do usuário>.json`
-(eventos de cada pessoa, só acréscimos — evita conflito de sincronização; cópias de
-conflito do OneDrive também são lidas, juntando pelo id do evento) e
-`online/<id>.json` ("visto por último", renovado a cada minuto; "Ativos (5 min)"). A
-situação de cada checagem é o último evento do item. O painel relê a pasta a cada 30 s e
-ao voltar para a janela. Não funciona no app do Teams, no celular, no Firefox nem no
-Safari. Sem nenhum dos dois modos o painel funciona sem esses controles. Identificação simples, pedida pelo usuário: cada pessoa escolhe o próprio nome
-numa lista que o **administrador** mantém (botão "Usuários", visível para quem é Editor
-do painel; a regra de `db` `config` → `write: admin` impede os demais de alterar a lista).
-O cabeçalho mostra **quem está online** (presença do `room`). Em cada lançamento do
-Pagamento indevido e em cada CT-e dos Confrontos há **checagem**: conclusão (Pendente ·
-Em verificação · Verificado — sem correção · Corrigido no Rodopar) e observações, com
-quem e quando; os KPIs mostram "Checados x de y". Cada checagem e cada mudança na lista
-de usuários vai para a aba **Registro** (coleção `registro`), que baixa em .xlsx para
-guardar na pasta do SharePoint; o .xlsx da apuração e o relatório de verificações trazem
-as colunas da checagem. Banco no painel publicado: `config/usuarios` (lista), `checagens/<chave>`
-(`pi_<mês>_<cód>_<doc>_<CT-e>` ou `cf_<mês>_<CT-e>`), `registro/<id>`. Para salvar
-checagens a pessoa precisa de acesso de **Colaborador** (Contributor) no compartilhamento;
-Viewer só lê.
+**Sistema: login e dados na pasta do SharePoint (nov/2026).** O painel segue o **Padrão de
+Sistemas Tóliman** (https://claude.ai/artifact/NiiyT3so8rej7pLiy84L5M): design, tela de entrada e
+armazenamento. O HTML (`saida/Dashboard_Produtividade_Motoristas.html`, arquivo único com fontes e
+imagens embutidas) fica na pasta do sistema, **`Produtividade de Motoristas`** (`PASTA_NOME`), no
+canal do Teams da equipe, e é aberto no Chrome ou no Edge pelo atalho do OneDrive. Ao abrir:
+conectar a pasta → entrar com usuário e senha. A primeira pessoa numa pasta vazia cria o acesso e
+vira administradora; o administrador cadastra os colegas com senha provisória (Configurações ›
+Usuários e senhas), e cada um cria a própria senha na primeira entrada. Senha só como hash
+PBKDF2-SHA256 (150 mil iterações, sal de 16 bytes, mínimo de 6 caracteres). 20 min sem uso
+bloqueiam a sessão. Sempre há pelo menos um administrador ativo. Estrutura da pasta:
+`usuarios/<login>.json` · `dados/<id do navegador>.json` (checagens + registro, gravado ~2 s depois
+de cada alteração) · `backups/Produtividade_Motoristas_dados_AAAA-MM-DD_<nome>.json` (um por dia;
+60 dias, depois um por mês) · `presenca/<id do navegador>.json` (online e checagem aberta) ·
+`historico/AAAA-MM_<id do navegador>.json` (entradas, senhas erradas, trocas, bloqueios, usuários;
+só administradores consultam). Cada navegador grava só os próprios arquivos; ciclo de 20 s lê os
+colegas e junta: por checagem vale o `atualizadoEm` mais novo, o registro é somado pelo id.
+**Bloqueio por registro:** a checagem aberta por alguém fica "em uso por" para os outros até fechar,
+trocar ou 20 min parado; "Aguardando chegar pelo OneDrive…" com "Abrir assim mesmo" quando a versão
+do colega ainda não chegou. **Versão anterior:** `painel-dados/` (pasta do Teams, out/2026) é lida
+só para leitura — sozinha se estiver na pasta do sistema, ou por Configurações › Importar da
+versão anterior; os usuários antigos não tinham senha e são cadastrados de novo. Configurações
+também tem Recuperar um backup, Trocar minha senha, Histórico de acesso, Pasta do sistema,
+Bloquear sessão e Sair. **Painel publicado** no claude.ai: só leitura ("Somente leitura"), sem
+checagens. Outro navegador: "Navegador sem suporte". Em cada lançamento do Pagamento indevido e
+em cada CT-e dos Confrontos há **checagem** (Pendente · Em verificação · Verificado — sem correção ·
+Corrigido no Rodopar + observações, com quem e quando); os KPIs mostram "Checados x de y"; a aba
+**Registro** lista as checagens e exporta. Exportações no formato
+`Produtividade_Motoristas_<conteúdo>_AAAA-MM-DD_a_AAAA-MM-DD.xlsx`. Versão `vAAAA.MM.DD` (data do
+build) no rodapé. Código: `painel/acesso.js` (login e dados), `painel/sistema.css` (tokens,
+degradês, componentes `s-` e tela de entrada copiados do padrão), `painel/fonts/` e `painel/img/`
+(embutidos pelo `3_painel.py`). Teste: `node tests/pasta-sharepoint.mjs` (duas pessoas na mesma
+pasta, simulada com uma pasta temporária).
 
 Abas: **Visão geral** (KPIs, composição, grupos, ranking, tabela) · **Por
 motorista** (ficha individual, comparação com a frota, histórico mês a mês) ·
 **Evolução** (frota mês a mês e variação por motorista) · **Pagamento indevido**
 (apuração de viagem paga em rota de carregamento e ordem cancelada paga) ·
-**Confrontos** (CT-e duplicados lado a lado). Identidade visual
-Dínamo/Tóliman — navy `#1C2543`, coral `#DD4663`, mauve `#AE82B1`, areia `#F4D38D`.
+**Confrontos** (CT-e duplicados lado a lado) · **Registro** (checagens). Visual do Padrão de
+Sistemas Tóliman: tokens `--ink #0B1730`, `--navy #112346`, `--accent #E4536C`, `--plum`, `--steel`,
+`--line`, `--paper`, cores da logo `--ouro #F5CE7A` e `--lilas #A275B4`; fontes Barlow Condensed
+(títulos, caixa alta), IBM Plex Sans (texto) e IBM Plex Mono (rótulos e números); cabeçalho
+`.s-cab` com a linha `--g-logo`, abas sublinhadas em `--g-foco`, faixa de título `--g-noite` com o
+seletor de mês, cartões de números com faixa `--g-logo` e número em degradê, rodapé navy com a
+versão. Só tema claro.
 
 ## Gotchas técnicos
 

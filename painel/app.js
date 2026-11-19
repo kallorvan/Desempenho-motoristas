@@ -38,7 +38,7 @@ const SHORT = {
 const gcode = g => SHORT[g] ? SHORT[g][0] : null;
 const short = g => SHORT[g] ? `<span class="gnum num">${SHORT[g][0]}</span>${SHORT[g][1]}` : (g||'—');
 const shortTxt = g => SHORT[g] ? `${SHORT[g][0]} — ${SHORT[g][1]}` : g;
-const GCOL = ['#1C2543','#DD4663','#AE82B1','#F4D38D','#5C6486','#E88A9C','#8FA0C8'];
+const GCOL = ['#112346','#E4536C','#A275B4','#F5CE7A','#6B7A94','#EE8A9C','#98A6BC'];
 
 /* ordem de grupos fixa (união de todos os meses) para a cor não mudar de mês para mês */
 const ALLROWS = MESES.flatMap(m=>DATASETS[m]);
@@ -47,6 +47,8 @@ const GROUPS = [...new Set(ALLROWS.map(d=>d.grupo))].sort((a,b)=>
 const gcol = g => GCOL[GROUPS.indexOf(g) % GCOL.length];
 
 const isManobrista = d => d.frete === 0;
+/* período do mês para os nomes das exportações: do dia 1 até onde vão os dados (AAAA-MM-DD) */
+const periodoISO = m => { const a = (ATE[m]||'').split('/'); return [m+'-01', a.length===3 ? `${a[2]}-${a[1]}-${a[0]}` : m+'-01']; };
 
 /* critério de avaliação: só quem rodou ao menos KM_MIN no mês entra nos rankings e
    nas comparações com a frota; os totais da frota continuam com todos (foi pago) */
@@ -109,7 +111,7 @@ function renderKPIs(){
 function renderComp(el,legEl,items,total){
   el.innerHTML = items.filter(i=>i.v>0).map(i=>
     `<span style="width:${(i.v/total*100)}%;background:${i.c}"></span>`).join('') ||
-    `<span style="width:100%;background:#E7E9F1"></span>`;
+    `<span style="width:100%;background:#EEF1F6"></span>`;
   legEl.innerHTML = items.map(i=>
     `<div class="leg-row"><span class="sw" style="background:${i.c}"></span>
      <span>${i.k}</span>
@@ -392,7 +394,7 @@ function renderMov(d){
     {todas:'Todos os lançamentos', alerta:'Só com alerta', qualquer:'Com qualquer verificação'}[k]}</button>`).join('');
   const nivelLinha = i => { const f = F[i]||[]; return f.some(x=>REGRA[x[0]].nivel==='alerta') ? 'al' : (f.length ? 'inf' : ''); };
   const idx = L.map((_,i)=>i).filter(i=> movFiltro==='todas' || (movFiltro==='alerta' ? nivelLinha(i)==='al' : (F[i]||[]).length));
-  const v = x => x ? brl(x) : '<span style="color:#B9BFD2">0,00</span>';
+  const v = x => x ? brl(x) : '<span style="color:#B4BFD0">0,00</span>';
   const H = ['Documento','Data','Chegada','Container','Cliente','Origem / Destino','T. Frete','CT-e','Nº RV','VG','Lona','Vira','Carregamento','Lona (R$)','Viagem'];
   const rows = idx.map(i=>{ const x = L[i], f = F[i]||[];
     return `<tr class="${nivelLinha(i)} ${f.length?'tem':''}">
@@ -650,7 +652,7 @@ document.getElementById('rel-btn').addEventListener('click', async ()=>{
   const v = document.getElementById('rel-per').value; if(!v) return;
   const meses = v==='todos' ? MESES.filter(m=>LANC[m]) : [v];
   const comInfo = document.getElementById('rel-info').checked;
-  const nome = `Verificacoes_Motoristas_${v==='todos' ? meses[0]+'_a_'+meses[meses.length-1] : v}.xlsx`;
+  const nome = nomeExport('verificacoes', periodoISO(meses[0])[0], periodoISO(meses[meses.length-1])[1], 'xlsx');
   btn.disabled = true; msg.textContent = 'Gerando…';
   try{
     const st = await salvarArquivo(nome, relatorioVerificacoes(meses, comInfo));
@@ -809,7 +811,7 @@ document.getElementById('pi-callout').addEventListener('click',e=>{ if(e.target.
 document.getElementById('pi-btn').addEventListener('click', async ()=>{
   const btn = document.getElementById('pi-btn'), msg = document.getElementById('pi-msg');
   if(!LANC[MES]) return;
-  const nome = `Pagamento_Indevido_Viagem_${MES}.xlsx`;
+  const nome = nomeExport('pagamento_indevido', ...periodoISO(MES), 'xlsx');
   btn.disabled = true; msg.textContent = 'Gerando…';
   try{
     const blob = XLSX_MIN.build([{name:'Pagamento indevido', rows:planilhaIndevido([MES]), header:0,
@@ -966,7 +968,7 @@ function renderEvolucao(){
         ${MESES_FECH.map(m=>{
           const p = r.s.find(x=>x.mes===m);
           return `<div class="evr-line"><i>${mshort(m)}</i>
-            <div class="track thin"><div class="fill" style="width:${Math.max((p.v||0)/scale*100,0.6)}%;background:${m===A?'var(--ink)':'#B9BFD2'}"></div></div>
+            <div class="track thin"><div class="fill" style="width:${Math.max((p.v||0)/scale*100,0.6)}%;background:${m===A?'var(--g-logo)':'#C9D2E0'}"></div></div>
             <b class="num">${p.v!=null?M.fmt(p.v):'—'}</b></div>`;
         }).join('')}
       </div>
@@ -995,341 +997,22 @@ document.getElementById('ev-list').addEventListener('keydown',e=>{
   const r=e.target.closest('.evr'); if(r){e.preventDefault();openDriver(r.dataset.cod);}
 });
 
-/* ================= COLABORAÇÃO: usuário, quem está online, checagens e registro =================
-   Dois modos, escolhidos sozinhos:
-   - "db": painel publicado no claude.ai (recursos db/room/user da plataforma);
-   - "pasta": arquivo aberto no Edge/Chrome do computador, gravando numa pasta do Teams
-     sincronizada pelo OneDrive (File System Access do navegador, com autorização da pessoa).
-   Sem nenhum dos dois, o painel funciona como antes, sem esses controles. Identificação
-   simples, como pedido: cada pessoa escolhe o próprio nome na lista do administrador. */
-const CK_STATUS = [['pendente','Pendente'],['verificando','Em verificação'],['ok','Verificado — sem correção'],['corrigido','Corrigido no Rodopar']];
-const CK_LAB = Object.fromEntries(CK_STATUS);
-const ONLINE_MIN = 5;   /* modo pasta: "online" = visto nos últimos ONLINE_MIN minutos */
-const COLAB = {modo:'', db:null, room:null, user:null, pasta:null, pastaPendente:null, suportePasta:false,
-  adminPlataforma:false, usuarios:[], checks:{}, log:[], peers:[], vistos:[]};
-let EU = (()=>{ try{ return localStorage.getItem('painel.usuario')||''; }catch(e){ return ''; } })();
-const ckSan = s => String(s).replace(/[^A-Za-z0-9_.~:@+-]/g,'_').slice(0,190);
-const ckChavePI = (m,it)=> ckSan(`pi_${m}_${it.cod}_${it.doc}_${it.cte}`);
-const ckChaveCF = (m,cte)=> ckSan(`cf_${m}_${cte}`);
-const nomeUsuario = id => (COLAB.usuarios.find(u=>u.id===id)||{}).nome || '';
-const quando = iso => { try{ return new Date(iso).toLocaleString('pt-BR',{dateStyle:'short',timeStyle:'short'}); }catch(e){ return iso||''; } };
-const ckOf = k => COLAB.checks[k] || null;
-const novoId = p => p + Date.now().toString(36) + Math.random().toString(36).slice(2,7);
-/* administrador: no painel publicado, quem é Editor; na pasta, quem está marcado como
-   administrador na lista (com a lista vazia, qualquer um cadastra o primeiro) */
-const ehAdmin = () => COLAB.modo==='db' ? COLAB.adminPlataforma
-  : COLAB.modo==='pasta' ? (!COLAB.usuarios.length || !!(COLAB.usuarios.find(u=>u.id===EU)||{}).admin) : false;
-
-/* selo + botão de checagem de um item (pagamento indevido ou confronto) */
-function ckHtml(chave, tipo, mes, desc){
-  if(!COLAB.modo) return '';
-  const c = ckOf(chave), st = c ? c.status : 'pendente';
-  return `<span class="ck"><span class="ck-b ${esc(st)}">${esc(CK_LAB[st]||st)}</span>`
-    + (c && c.usuario ? `<span class="ck-o">${esc(nomeUsuario(c.usuario)||'—')} · ${esc(quando(c.quando))}${c.obs ? ' · '+esc(c.obs) : ''}</span>` : '')
-    + `<button type="button" class="ck-btn" data-ck="${esc(chave)}" data-tipo="${tipo}" data-mes="${esc(mes)}" data-desc="${esc(desc)}">${c ? 'Editar checagem' : 'Registrar checagem'}</button></span>`;
-}
-function ckResumo(chaves){
-  const n = chaves.length, f = chaves.filter(k=>{ const c = ckOf(k); return c && (c.status==='ok' || c.status==='corrigido'); }).length;
-  return {n, f};
-}
-
-/* ---------------- modo pasta: arquivos JSON na pasta do Teams ----------------
-   painel-dados/usuarios.json         lista de usuários (só administradores alteram)
-   painel-dados/registro/<id>.json    eventos de cada pessoa, só acréscimos (sem conflito
-                                      de sincronização entre pessoas; cópias de conflito do
-                                      OneDrive também são lidas e juntadas pelo id do evento)
-   painel-dados/online/<id>.json      "visto por último", renovado a cada minuto */
-const IDB = {
-  abrir(){ return new Promise((ok,er)=>{ const r = indexedDB.open('painel-motoristas',1);
-    r.onupgradeneeded = ()=> r.result.createObjectStore('kv'); r.onsuccess = ()=> ok(r.result); r.onerror = ()=> er(r.error); }); },
-  async get(k){ const d = await IDB.abrir(); return new Promise(ok=>{ const r = d.transaction('kv').objectStore('kv').get(k); r.onsuccess = ()=> ok(r.result); r.onerror = ()=> ok(null); }); },
-  async set(k,v){ const d = await IDB.abrir(); return new Promise(ok=>{ const t = d.transaction('kv','readwrite'); t.objectStore('kv').put(v,k); t.oncomplete = ()=> ok(); t.onerror = ()=> ok(); }); }
-};
-async function pDir(...nomes){ let d = await COLAB.pasta.getDirectoryHandle('painel-dados',{create:true});
-  for(const n of nomes) d = await d.getDirectoryHandle(n,{create:true}); return d; }
-async function pLer(dir, nome){ try{ const f = await (await dir.getFileHandle(nome)).getFile(); return JSON.parse(await f.text()); }catch(e){ return null; } }
-async function pGravar(dir, nome, obj){ const w = await (await dir.getFileHandle(nome,{create:true})).createWritable();
-  await w.write(JSON.stringify(obj, null, 1)); await w.close(); }
-async function pLerTodos(dir){ const out = [];
-  for await (const [nome, h] of dir.entries()) if(h.kind==='file' && nome.toLowerCase().endsWith('.json')) out.push(await pLer(dir, nome));
-  return out.filter(Boolean); }
-function derivarChecks(){
-  const ch = {};
-  for(const r of COLAB.log.slice().reverse()) if(r.acao==='checagem' && r.chave)
-    ch[r.chave] = {tipo:r.tipo, mes:r.mes, ref:r.ref, status:r.para, obs:r.obs||'', usuario:r.usuario, quando:r.quando};
-  COLAB.checks = ch;
-}
-let PASTA_LENDO = false;
-async function pastaAtualizar(){
-  if(COLAB.modo!=='pasta' || PASTA_LENDO) return;
-  PASTA_LENDO = true;
-  try{
-    const base = await pDir();
-    const u = await pLer(base, 'usuarios.json');
-    COLAB.usuarios = u && Array.isArray(u.lista) ? u.lista : [];
-    const vistos = new Map();
-    for(const arr of await pLerTodos(await pDir('registro'))) if(Array.isArray(arr)) for(const r of arr) if(r && r.id) vistos.set(r.id, r);
-    COLAB.log = [...vistos.values()].sort((a,b)=> (a.quando<b.quando) - (a.quando>b.quando));
-    derivarChecks();
-    const lim = Date.now() - ONLINE_MIN*60000;
-    COLAB.vistos = (await pLerTodos(await pDir('online'))).filter(o=>o.usuario && Date.parse(o.visto)>lim);
-    colabRender();
-  }catch(e){
-    COLAB.pastaErro = 'Não foi possível ler a pasta. Confira se ela continua sincronizada e reconecte.';
-    colabRender();
-  }finally{ PASTA_LENDO = false; }
-}
-async function pastaBatida(){
-  if(COLAB.modo!=='pasta' || !EU || document.visibilityState!=='visible') return;
-  try{ await pGravar(await pDir('online'), ckSan(EU)+'.json', {usuario:EU, visto:new Date().toISOString()}); }catch(e){}
-}
-let PASTA_TIMER = null;
-async function pastaIniciar(h){
-  COLAB.pasta = h; COLAB.pastaPendente = null; COLAB.pastaErro = ''; COLAB.modo = 'pasta';
-  await pastaBatida(); await pastaAtualizar();
-  if(!PASTA_TIMER) PASTA_TIMER = setInterval(()=>{ pastaAtualizar(); pastaBatida(); }, 30000);
-}
-async function conectarPasta(){
-  try{
-    const h = COLAB.pastaPendente && (await COLAB.pastaPendente.requestPermission({mode:'readwrite'}))==='granted'
-      ? COLAB.pastaPendente : await window.showDirectoryPicker({id:'painel-motoristas', mode:'readwrite'});
-    try{ await IDB.set('pasta', h); }catch(e){}
-    await pastaIniciar(h);
-  }catch(e){ /* a pessoa cancelou a escolha da pasta */ }
-}
-document.addEventListener('visibilitychange',()=>{ if(document.visibilityState==='visible'){ pastaAtualizar(); pastaBatida(); } });
-
-/* ---------------- gravações (os dois modos) ---------------- */
-async function bkUsuarios(lista){
-  if(COLAB.modo==='db') return COLAB.db.doc('config/usuarios').set({lista, atualizado:new Date().toISOString(), por:EU||''});
-  await pGravar(await pDir(), 'usuarios.json', {lista, atualizado:new Date().toISOString(), por:EU||''});
-  COLAB.usuarios = lista;
-}
-async function bkRegistrar(ev){
-  const r = Object.assign({id:novoId('e'), quando:new Date().toISOString(), usuario:EU||''}, ev);
-  if(COLAB.modo==='db') return COLAB.db.collection('registro').add(r);
-  const dir = await pDir('registro'), nome = ckSan(EU || 'administrador') + '.json';
-  const arr = (await pLer(dir, nome)) || [];
-  arr.push(r); await pGravar(dir, nome, arr);
-  COLAB.log = [r, ...COLAB.log]; derivarChecks();
-}
-async function bkChecagem(chave, doc){
-  if(COLAB.modo==='db') return COLAB.db.doc('checagens/'+chave).set(doc);
-  /* na pasta a situação de cada item sai do próprio registro (último evento do item) */
-}
-
-/* ---------------- cabeçalho: nome, online, administrador, pasta ---------------- */
-function colabRender(){ renderColab(); renderCkAll(); renderRegistro(); if(dlgUs.open) renderUsuarios(); }
-function renderColab(){
-  const el = document.getElementById('colab');
-  if(!COLAB.modo){
-    if(COLAB.suportePasta){
-      el.hidden = false;
-      el.innerHTML = `<button type="button" class="chip" id="colab-pasta">${COLAB.pastaPendente ? 'Reconectar pasta do Teams' : 'Conectar pasta do Teams'}</button>`;
-    }else el.hidden = true;
-    return;
-  }
-  el.hidden = false;
-  const ativos = COLAB.usuarios.filter(u=>u.ativo!==false);
-  if(EU && COLAB.usuarios.length && !COLAB.usuarios.some(u=>u.id===EU)) EU = '';
-  el.innerHTML = `<label class="on-l">Você:
-      <select id="colab-eu" aria-label="Escolha seu nome">
-        <option value="">${ativos.length ? 'Escolha seu nome' : 'Lista de usuários vazia'}</option>
-        ${ativos.map(u=>`<option value="${esc(u.id)}" ${u.id===EU?'selected':''}>${esc(u.nome)}</option>`).join('')}
-      </select></label>
-    <span class="on-l" id="colab-on"></span>
-    ${ehAdmin() ? '<button type="button" class="chip" id="colab-adm">Usuários</button>' : ''}
-    ${COLAB.modo==='pasta' ? `<button type="button" class="chip" id="colab-pasta" title="Pasta onde ficam os dados do painel">Pasta: ${esc(COLAB.pasta.name)}</button>` : ''}
-    ${COLAB.pastaErro ? `<span class="on-l" style="color:#B3243F">${esc(COLAB.pastaErro)}</span>` : ''}`;
-  renderOnline();
-}
-function renderOnline(){
-  const box = document.getElementById('colab-on'); if(!box) return;
-  const l = new Map();
-  if(COLAB.modo==='db'){
-    for(const p of COLAB.peers){
-      if(p.kind!=='viewer') continue;
-      const id = p.presence && typeof p.presence.usuario==='string' ? p.presence.usuario : '';
-      const k = id || ('peer:'+p.peer);
-      if(!l.has(k)) l.set(k, {nome: nomeUsuario(id) || 'sem nome escolhido', eu: p.isMe});
-      else if(p.isMe) l.get(k).eu = true;
-    }
-  }else{
-    for(const o of COLAB.vistos) l.set(o.usuario, {nome: nomeUsuario(o.usuario) || 'usuário removido', eu: o.usuario===EU});
-    if(EU && !l.has(EU)) l.set(EU, {nome: nomeUsuario(EU), eu:true});
-  }
-  const v = [...l.values()];
-  box.innerHTML = v.length ? (COLAB.modo==='db' ? 'Online agora: ' : `Ativos (${ONLINE_MIN} min): `)
-    + v.map(u=>`<span class="on-u">${esc(u.nome)}${u.eu?' (você)':''}</span>`).join('') : '';
-}
-document.getElementById('colab').addEventListener('change',e=>{
-  if(e.target.id!=='colab-eu') return;
-  EU = e.target.value;
-  try{ localStorage.setItem('painel.usuario', EU); }catch(err){}
-  if(COLAB.room) COLAB.room.presence({usuario: EU || null}).catch(()=>{});
-  renderColab(); pastaBatida().then(pastaAtualizar);
-});
-document.getElementById('colab').addEventListener('click',e=>{
-  if(e.target.closest('#colab-adm')) abrirUsuarios();
-  if(e.target.closest('#colab-pasta')) conectarPasta();
-});
-
-/* ---------------- administrador: lista de usuários ---------------- */
-const dlgUs = document.getElementById('dlg-users');
-function renderUsuarios(){
-  const pasta = COLAB.modo==='pasta';
-  document.getElementById('us-list').innerHTML = COLAB.usuarios.map(u=>`<div class="us-row ${u.ativo===false?'inativo':''}">
-      <span class="nm">${esc(u.nome)}${pasta && u.admin ? ' · <b>administrador</b>' : ''}</span>
-      <span style="display:flex;gap:6px">
-        ${pasta ? `<button type="button" class="chip" data-us="${esc(u.id)}" data-op="admin">${u.admin?'Tirar administrador':'Tornar administrador'}</button>` : ''}
-        <button type="button" class="chip" data-us="${esc(u.id)}" data-op="ativo">${u.ativo===false?'Reativar':'Desativar'}</button></span></div>`).join('')
-    || '<div class="ck-ref">Nenhum usuário cadastrado.' + (pasta ? ' O primeiro nome cadastrado fica como administrador.' : '') + '</div>';
-}
-function abrirUsuarios(){ document.getElementById('us-msg').textContent=''; renderUsuarios(); dlgUs.showModal(); }
-async function salvarUsuarios(lista, ev){
-  const msg = document.getElementById('us-msg'); msg.textContent = 'Salvando…';
-  try{ await bkUsuarios(lista); await bkRegistrar(ev); msg.textContent = ''; colabRender(); pastaBatida(); }
-  catch(e){ msg.textContent = COLAB.modo==='db' ? 'Não foi possível salvar. Só o administrador (Editor do painel) altera a lista.'
-    : 'Não foi possível gravar na pasta. Confira se ela está sincronizada e se você pode editá-la.'; }
-}
-document.getElementById('us-add').addEventListener('click',()=>{
-  const inp = document.getElementById('us-nome'), nome = inp.value.trim().replace(/\s+/g,' ');
-  if(!nome) return;
-  if(COLAB.usuarios.some(u=>u.nome.toLowerCase()===nome.toLowerCase())){ document.getElementById('us-msg').textContent='Esse nome já está na lista.'; return; }
-  const u = {id:novoId('u'), nome, ativo:true};
-  if(COLAB.modo==='pasta' && !COLAB.usuarios.length){ u.admin = true; if(!EU){ EU = u.id; try{ localStorage.setItem('painel.usuario', EU); }catch(e){} } }
-  inp.value = '';
-  salvarUsuarios([...COLAB.usuarios, u], {acao:'usuario', tipo:'usuario', chave:u.id, ref:`Usuário cadastrado: ${nome}${u.admin?' (administrador)':''}`, de:'', para:'ativo', obs:''});
-});
-document.getElementById('us-list').addEventListener('click',e=>{
-  const b = e.target.closest('button[data-us]'); if(!b) return;
-  const u = COLAB.usuarios.find(x=>x.id===b.dataset.us); if(!u) return;
-  if(b.dataset.op==='admin'){
-    const admin = !u.admin;
-    if(!admin && COLAB.usuarios.filter(x=>x.admin).length<=1){ document.getElementById('us-msg').textContent='A lista precisa de pelo menos um administrador.'; return; }
-    return salvarUsuarios(COLAB.usuarios.map(x=>x.id===u.id ? Object.assign({}, x, {admin}) : x),
-      {acao:'usuario', tipo:'usuario', chave:u.id, ref:`${u.nome} ${admin?'passou a ser administrador':'deixou de ser administrador'}`, de:'', para:'', obs:''});
-  }
-  const ativo = u.ativo===false;
-  salvarUsuarios(COLAB.usuarios.map(x=>x.id===u.id ? Object.assign({}, x, {ativo}) : x),
-    {acao:'usuario', tipo:'usuario', chave:u.id, ref:`Usuário ${ativo?'reativado':'desativado'}: ${u.nome}`, de:ativo?'inativo':'ativo', para:ativo?'ativo':'inativo', obs:''});
-});
-document.getElementById('us-close').addEventListener('click',()=>dlgUs.close());
-
-/* ---------------- checagem de um item ---------------- */
-const dlgCk = document.getElementById('dlg-ck');
-let CK_ATUAL = null;
-document.getElementById('ck-status').innerHTML = CK_STATUS.map(([v,l])=>`<option value="${v}">${l}</option>`).join('');
-function abrirChecagem(b){
-  CK_ATUAL = {chave:b.dataset.ck, tipo:b.dataset.tipo, mes:b.dataset.mes, desc:b.dataset.desc};
-  const c = ckOf(CK_ATUAL.chave);
-  document.getElementById('ck-tit').textContent = CK_ATUAL.tipo==='cf' ? 'Checagem do confronto' : 'Checagem do pagamento indevido';
-  document.getElementById('ck-ref').textContent = `${mlab(CK_ATUAL.mes)} · ${CK_ATUAL.desc}`;
-  document.getElementById('ck-status').value = c ? c.status : 'pendente';
-  document.getElementById('ck-obs').value = c ? (c.obs||'') : '';
-  document.getElementById('ck-msg').textContent = EU ? '' : 'Escolha seu nome no topo do painel antes de salvar.';
-  const hist = COLAB.log.filter(r=>r.chave===CK_ATUAL.chave);
-  document.getElementById('ck-hist').innerHTML = hist.length
-    ? '<b>Histórico</b>' + hist.map(r=>`<div>${esc(quando(r.quando))} · <b>${esc(nomeUsuario(r.usuario)||'—')}</b> · ${esc(CK_LAB[r.de]||r.de||'—')} → ${esc(CK_LAB[r.para]||r.para||'—')}${r.obs?' · '+esc(r.obs):''}</div>`).join('')
-    : '<span>Sem checagens registradas.</span>';
-  dlgCk.showModal();
-}
-document.getElementById('ck-cancel').addEventListener('click',()=>dlgCk.close());
-document.getElementById('ck-form').addEventListener('submit', async e=>{
-  e.preventDefault();
-  const msg = document.getElementById('ck-msg');
-  if(!EU){ msg.textContent = 'Escolha seu nome no topo do painel antes de salvar.'; return; }
-  const status = document.getElementById('ck-status').value, obs = document.getElementById('ck-obs').value.trim();
-  const ant = ckOf(CK_ATUAL.chave);
-  if(ant && ant.status===status && (ant.obs||'')===obs){ dlgCk.close(); return; }
-  const btn = document.getElementById('ck-save'); btn.disabled = true; msg.textContent = 'Salvando…';
-  try{
-    await bkChecagem(CK_ATUAL.chave, {tipo:CK_ATUAL.tipo, mes:CK_ATUAL.mes, ref:CK_ATUAL.desc, status, obs, usuario:EU, quando:new Date().toISOString()});
-    await bkRegistrar({acao:'checagem', tipo:CK_ATUAL.tipo, mes:CK_ATUAL.mes, chave:CK_ATUAL.chave, ref:CK_ATUAL.desc,
-      de: ant ? ant.status : 'pendente', para: status, obs});
-    msg.textContent = ''; dlgCk.close(); colabRender();
-  }catch(err){
-    msg.textContent = COLAB.modo==='pasta' ? 'Não foi possível gravar na pasta. Confira se ela está sincronizada e se você pode editá-la.'
-      : err && err.code==='invalid_argument' ? 'Seu acesso ao painel é só de leitura. Peça ao administrador acesso de Colaborador.'
-      : 'Não foi possível salvar agora. Tente de novo.';
-  }finally{ btn.disabled = false; }
-});
-document.addEventListener('click',e=>{
-  const b = e.target.closest('.ck-btn[data-ck]'); if(!b) return;
-  e.stopPropagation(); abrirChecagem(b);
-}, true);
-
-/* ---------------- aba Registro ---------------- */
-const REG_ACAO = {checagem:'Checagem', usuario:'Usuários'};
-const REG_TIPO = {pi:'Pagamento indevido', cf:'Confronto', usuario:'Cadastro'};
-const regUsuario = r => nomeUsuario(r.usuario) || (r.tipo==='usuario' ? 'administrador' : '');
-function regFiltrado(){
-  const q = document.getElementById('reg-q').value.trim().toLowerCase();
-  return COLAB.log.filter(r=> !q || [regUsuario(r), r.ref, r.obs, r.mes, CK_LAB[r.para]].join(' ').toLowerCase().includes(q));
-}
-function renderRegistro(){
-  const box = document.getElementById('registro'), note = document.getElementById('reg-note');
-  document.getElementById('reg-btn').disabled = !COLAB.modo;
-  if(!COLAB.modo){
-    note.textContent='';
-    box.innerHTML = `<div class="pad" style="color:var(--muted);font-size:12.5px">${COLAB.suportePasta
-      ? 'Para registrar checagens, clique em <b>Conectar pasta do Teams</b> no topo e escolha a pasta da equipe (sincronizada pelo OneDrive). O navegador pede autorização para o painel gravar nela.'
-      : 'Checagens e registro funcionam no painel publicado ou neste arquivo aberto no Edge ou no Chrome do computador, conectado à pasta do Teams.'}</div>`;
-    return;
-  }
-  const rs = regFiltrado();
-  note.textContent = `${COLAB.log.length} registro(s) · mais recentes primeiro` + (COLAB.modo==='pasta' ? ` · pasta ${COLAB.pasta.name}/painel-dados` : '');
-  box.innerHTML = rs.length ? `<div style="overflow-x:auto"><table class="reg-t">
-      <thead><tr><th>Quando</th><th>Usuário</th><th>Tipo</th><th>Mês</th><th>Item</th><th>De → para</th><th>Observações</th></tr></thead>
-      <tbody>${rs.map(r=>`<tr><td class="num">${esc(quando(r.quando))}</td><td>${esc(regUsuario(r)||'—')}</td>
-        <td>${esc(REG_TIPO[r.tipo]||REG_ACAO[r.acao]||r.acao||'')}</td><td>${r.mes?esc(mshort(r.mes)):''}</td><td class="w">${esc(r.ref||'')}</td>
-        <td>${esc(CK_LAB[r.de]||r.de||'—')} → ${esc(CK_LAB[r.para]||r.para||'—')}</td><td class="w">${esc(r.obs||'')}</td></tr>`).join('')}</tbody>
-    </table></div>` : '<div class="pad" style="color:var(--muted);font-size:12.5px">Nenhuma alteração registrada.</div>';
-}
-document.getElementById('reg-q').addEventListener('input',renderRegistro);
-document.getElementById('reg-btn').addEventListener('click', async ()=>{
-  const msg = document.getElementById('reg-msg'), hoje = new Date().toISOString().slice(0,10);
-  const rows = [['Quando','Usuário','Tipo','Mês','Item','De','Para','Observações']].concat(
-    COLAB.log.map(r=>[quando(r.quando), regUsuario(r), REG_TIPO[r.tipo]||REG_ACAO[r.acao]||'', r.mes?mshort(r.mes):'', r.ref||'',
-      CK_LAB[r.de]||r.de||'', CK_LAB[r.para]||r.para||'', r.obs||'']));
-  try{
-    const nome = `Registro_Painel_Motoristas_${hoje}.xlsx`;
-    const st = await salvarArquivo(nome, XLSX_MIN.build([{name:'Registro', rows, header:0, widths:[16,26,18,8,60,24,24,60]}]));
-    msg.textContent = st==='delivered' ? 'Registro enviado.' : `Registro gerado: ${nome}`;
-  }catch(e){ msg.textContent = e && e.code==='declined' ? 'Download cancelado.' : 'Não foi possível gerar o arquivo.'; }
-});
-
-/* ---------------- início: escolhe o modo ---------------- */
-function renderCkAll(){ renderIndevido(); renderConfrontos(); }
-(async function colabInit(){
-  let db = null, room = null, user = null;
-  if(window.claude && typeof window.claude.use==='function')
-    [db, room, user] = await Promise.all(['db','room','user'].map(n=>window.claude.use(n).catch(()=>null)));
-  if(db){
-    COLAB.modo = 'db'; COLAB.db = db; COLAB.room = room; COLAB.user = user;
-    if(user) COLAB.adminPlataforma = await user.canEdit();
-    db.doc('config/usuarios').onSnapshot(s=>{ COLAB.usuarios = (s.exists && Array.isArray(s.data().lista)) ? s.data().lista : []; colabRender(); }, ()=>{});
-    db.collection('checagens').onSnapshot(s=>{ COLAB.checks = Object.fromEntries(s.docs.map(d=>[d.id, d.data()])); renderCkAll(); }, ()=>{});
-    db.collection('registro').orderBy('quando','desc').limit(1000).onSnapshot(s=>{ COLAB.log = s.docs.map(d=>d.data()); renderRegistro(); }, ()=>{});
-    if(room){
-      room.onPeers(ch=>{ COLAB.peers = ch.peers; renderOnline(); }, ()=>{});
-      if(EU) room.presence({usuario:EU}).catch(()=>{});
-    }
-    colabRender(); return;
-  }
-  COLAB.suportePasta = typeof window.showDirectoryPicker === 'function';
-  if(COLAB.suportePasta){
-    try{
-      const h = await IDB.get('pasta');
-      if(h){ (await h.queryPermission({mode:'readwrite'}))==='granted' ? await pastaIniciar(h) : (COLAB.pastaPendente = h); }
-    }catch(e){}
-  }
-  colabRender();
-})();
+__ACESSO_JS__
 
 /* ================= ABAS ================= */
 const TABS = {'tab-geral':'v-geral','tab-ind':'v-ind','tab-evo':'v-evo','tab-pi':'v-pi','tab-conf':'v-conf','tab-reg':'v-reg'};
+const FAIXA = {
+  'tab-geral':['Visão geral','Frete, bonificações e verificações das movimentações da frota no mês.'],
+  'tab-ind':['Por motorista','Ficha de cada motorista: números do mês, comparação com a frota, histórico e movimentações.'],
+  'tab-evo':['Evolução','A frota e cada motorista mês a mês, só com os meses fechados.'],
+  'tab-pi':['Pagamento indevido','Viagem paga em rota de carregamento e ordem cancelada paga: o que recuperar e a checagem de cada lançamento.'],
+  'tab-conf':['Confrontos','CT-e com frete em mais de um lançamento, lado a lado, com a checagem de cada caso.'],
+  'tab-reg':['Registro','Todas as checagens salvas, com usuário, data e hora.']};
+let TAB_ATUAL = 'tab-geral';
 function setTab(id){
+  TAB_ATUAL = id;
+  document.getElementById('fx-tit').textContent = FAIXA[id][0];
+  document.getElementById('fx-sub').textContent = FAIXA[id][1];
   Object.entries(TABS).forEach(([t,v])=>{
     document.getElementById(t).setAttribute('aria-selected', t===id);
     document.getElementById(v).classList.toggle('hidden', t!==id);
@@ -1359,7 +1042,7 @@ document.getElementById('rank').addEventListener('click',e=>{
 });
 
 /* cabeçalho congelado: sombra só depois de rolar */
-const topHdr = document.querySelector('header.top');
+const topHdr = document.getElementById('stickytop');
 const marcaTopo = ()=>{
   const y = window.scrollY;
   topHdr.classList.toggle('stuck', y > 4);
@@ -1407,16 +1090,17 @@ function renderMes(keepCod){
   T    = TOTAIS[MES];
   ATIVOS = DATA.filter(d=>isAvaliado(d) && !isManobrista(d));
   calcRanks();
-  document.getElementById('per-lab').innerHTML = `${mlab(MES)} · <strong>${DATA.length} motoristas</strong>`
-    + (ATE[MES] ? ` · <span class="ate">dados até <strong>${ATE[MES]}</strong></span>` : '');
+  document.getElementById('per-lab').innerHTML = `<strong>${DATA.length} motoristas</strong>`
+    + (ATE[MES] ? ` · dados até <strong>${ATE[MES]}</strong>` : '');
+  document.getElementById('fx-mes').textContent = `Mês em uso · ${mlab(MES)}` + (ATE[MES] ? ` · até ${ATE[MES]}` : '');
   const pv = PREVIA[MES], ban = document.getElementById('previa-ban');
   ban.hidden = !pv;
-  if(pv) ban.innerHTML = `<b>${esc(mlab(MES))} — dados até ${esc(ATE[MES]||'—')}</b>`
+  if(pv) ban.innerHTML = `<span><b>${esc(mlab(MES))} — dados até ${esc(ATE[MES]||'—')}</b>`
     + (pv.periodo && pv.periodo.length ? ` (período ${esc(pv.periodo[0])} a ${esc(pv.periodo[1])}` : ' (')
     + (pv.ultimoLancamento ? `, último lançamento em ${esc(pv.ultimoLancamento)}` : '') + `). `
     + `Relatório emitido em ${esc(pv.emissao||'—')}, antes do fechamento de média: `
     + `só bônus de viagem (sem prêmio por economia, bônus por média, km e posição no grupo). `
-    + `Verificações, pagamento indevido e confrontos valem normalmente; o mês fica fora da Evolução e do histórico até o fechamento.`;
+    + `Verificações, pagamento indevido e confrontos valem normalmente; o mês fica fora da Evolução e do histórico até o fechamento.</span>`;
   renderKPIs(); renderComposicao(); renderGrupos(); renderFora(); renderIndevido(); renderIndevidoCallout(); renderVerif(); renderRelControles(); renderRank(); renderTable(); renderConfrontos();
   renderIndividual(keepCod);
 }
