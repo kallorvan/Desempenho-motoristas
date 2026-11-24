@@ -52,6 +52,10 @@ está feito, o que ficou em aberto e o que foi só discutido.
    com o Rodopar antes de pagar.
 2. Outubro — 60 lançamentos de 30/09 já pagos em setembro (bônus R$ 6.471,98): pagar
    de novo ou estornar.
+   **24/11:** o Rodopar reemitiu o xlsx de outubro sem as 62 linhas de 30/09 e com a taxa de
+   0285, 0357, 0563 e 0598 em 1,75% (bônus R$ 182.759,13 → R$ 175.521,46). Base não alterada:
+   falta o usuário dizer se outubro já foi pago (acerto em novembro) ou se a base muda.
+   Ver `docs/historico/2026-10-extracao.md`.
 3. 0752 ANANIAS — carregamento 2 × R$ 50,00 em 21/10 (doc. 1-001-078420).
 4. Setembro — acertos das versões V2/V3/V4 do PDF e R$ 1.198,56 de pagamento indevido.
 5. Outubro — pagamento indevido R$ 506,37 (7 lançamentos).

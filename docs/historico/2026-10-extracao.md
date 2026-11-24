@@ -64,3 +64,20 @@ prévia (`dados/2026-10.meta.json` apagado); o histórico das prévias segue em
 - Os 60 lançamentos de 30/09 (R$ 6.471,98) — pagar de novo ou estornar.
 - 0752 (R$ 50,00), acertos de setembro
   (V2/V3/V4) e os R$ 1.198,56 de pagamento indevido de setembro.
+
+## Reemissão do xlsx (recebida em 24/11/2026)
+
+`comissao_media_viagem_toliman_389_outubro_2026.xlsx` (e o mesmo em `.xls`), sem a linha de
+período no topo. **Não bate com o fechamento gravado** (que confere 100% com o PDF e o xlsx de
+outubro usados no fechamento). Base mantida como estava; decisão com o usuário.
+
+- **Saíram as 62 linhas de 30/09** (32 motoristas): frete R$ 341.969,15, 30 viagens (VG),
+  bônus R$ 6.730,18 (viagem R$ 6.275,18 + lona R$ 380,00 + carregamento R$ 75,00) — os 60
+  lançamentos já pagos em setembro (R$ 6.471,98) e as 2 linhas do 0231 (R$ 258,20).
+- **Taxa da viagem 1,85% → 1,75%** em todas as viagens de 0285, 0357, 0563 e 0598 (74 linhas,
+  −R$ 507,55).
+- Totais: frete R$ 9.336.529,14 → R$ 8.994.560,00 · viagens 750 → 720 · bônus operacional
+  R$ 182.759,13 → R$ 175.521,46 (−R$ 7.237,67).
+- Sem mudança: os 84 motoristas, premiação (segue zerada), média, km, grupo e posição; viras.
+- O arquivo novo fecha por dentro (identidades e resumo × linhas), fora o 0765 (frete do resumo
+  R$ 8.765,76 acima das linhas, o mesmo do fechamento).
