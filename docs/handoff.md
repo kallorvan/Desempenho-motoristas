@@ -1,7 +1,8 @@
 # Handoff — situação em 25/11/2026
 
-Para continuar em outra sessão: ler `CLAUDE.md`, `docs/procedimento.md` e
-`docs/historico/2026-10-extracao.md` (último mês fechado). Este arquivo resume o que
+Para continuar em outra sessão: ler `CLAUDE.md`, `docs/procedimento.md`,
+`docs/historico/2026-10-extracao.md` (último mês fechado) e `docs/historico/2026-11-previa.md`
+(mês em andamento). Este arquivo resume o que
 está feito, o que ficou em aberto e o que foi só discutido.
 
 ## Estado
@@ -9,8 +10,13 @@ está feito, o que ficou em aberto e o que foi só discutido.
 - **Meses no painel:** jul, ago, set, out/2026 (fechamento; versão reemitida em 25/11) e **nov/2026 — 2ª prévia,
   01 a 20/11**, soma dos relatórios 01–10 e 11–20 (`docs/historico/2026-11-previa.md`; PDF × xls
   100% iguais nas duas partes).
-  `dados/*.json` + `dados/lancamentos/2026-09.json` e `2026-10.json` (jul e ago sem
-  movimentações).
+  `dados/*.json` + `dados/lancamentos/2026-09.json`, `2026-10.json` e `2026-11.json` (jul e ago
+  sem movimentações).
+- **Git:** tudo na `main` (merge de 25/11/2026); branch de trabalho `claude/new-session-s7mm8t`.
+  Último painel publicado: versão 29 do artefato, com out reemitido e nov 01–20.
+- **`1_extrair.py` aceita prévia em partes** (25/11): vários PDFs de períodos seguidos do mesmo
+  mês, soma por motorista; recusa sobreposição e acusa lançamento repetido entre as partes. Com
+  um PDF só, reproduz as bases anteriores byte a byte.
 - **Painel = sistema do Padrão de Sistemas Tóliman (19/11/2026)**
   (https://claude.ai/artifact/NiiyT3so8rej7pLiy84L5M): visual novo (tokens, Barlow Condensed /
   IBM Plex, degradês, componentes `s-`), login com senha (PBKDF2) e dados na pasta do sistema
@@ -64,21 +70,23 @@ fonte única:
 
 ## Pendências com o usuário (decisões dele)
 
-1. Outubro — **resolvido em 25/11**: a base passou a ser o PDF reemitido pelo Rodopar
-   (premiação preenchida, R$ 76.835,97; sem as linhas de 30/09; taxa 1,75% em 0285, 0357,
-   0563 e 0598). Bonificações R$ 182.759,13 → R$ 252.357,36. Se a versão anterior já tiver
-   sido paga, o acerto por motorista está em `saida/Comparativo_Versoes_PDF_10_2026.xlsx`
-   (falta o usuário dizer). Ver `docs/historico/2026-10-extracao.md`.
-3. 0752 ANANIAS — carregamento 2 × R$ 50,00 em 21/10 (doc. 1-001-078420).
-4. Setembro — acertos das versões V2/V3/V4 do PDF e R$ 1.198,56 de pagamento indevido.
-5. Outubro — pagamento indevido R$ 506,37 (7 lançamentos).
+1. **Outubro — se já foi pago pela versão anterior.** Base trocada em 25/11 pelo PDF reemitido
+   (premiação preenchida R$ 76.835,97; sem as 62 linhas de 30/09; taxa 1,75% em 0285, 0357,
+   0563 e 0598). Bonificações R$ 182.759,13 → R$ 252.357,36 (79 motoristas mudam). Se a versão
+   anterior foi paga, o acerto por motorista sai de
+   `comparar_versoes.py entrada/<versão paga>.pdf entrada/<reemitido>.pdf 2026-10` (os PDFs não
+   ficam no git: pedir de novo). Ver `docs/historico/2026-10-extracao.md`.
+2. Outubro — 0217, 0039 e 0731 com km ≥ 4.000 e posição, mas economia e prêmio zero no
+   reemitido (só registrado, não perguntado ainda).
+3. Outubro — pagamento indevido R$ 506,37 (7 lançamentos), não corrigido na reemissão.
+4. 0752 ANANIAS — carregamento 2 × R$ 50,00 em 21/10 (doc. 1-001-078420).
+5. Setembro — acertos das versões V2/V3/V4 do PDF e R$ 1.198,56 de pagamento indevido.
 6. Novembro — 3 pares de CT-e Varginha x Santos com frete inteiro em out (0752, 0357,
    0735) e de novo em nov (0598, 0423, 0396): 6 lançamentos, frete R$ 34.754,40, bônus
-   R$ 608,22, frete inteiro (não é 60/40). Regra `CTE_MES_ANTERIOR` criada a pedido do
-   usuário; os casos aparecem nas verificações e no Confrontos. Falta a decisão sobre o
-   pagamento.
-7. Novembro (11–20) — 3 CT-e com frete inteiro em dois motoristas (01-1-136964 0898×0269,
-   01-1-136990 0898×0605, 01-1-137170 0863×0526): frete R$ 20.759,73 e bônus R$ 363,30 em dobro.
+   R$ 608,22 (não é 60/40). Regra `CTE_MES_ANTERIOR`; falta a decisão sobre o pagamento.
+7. Novembro (11–20) — 3 CT-e com frete inteiro em dois motoristas, mesmo container, não 60/40
+   (01-1-136964 0898×0269, 01-1-136990 0898×0605, 01-1-137170 0863×0526): frete R$ 20.759,73 e
+   bônus R$ 363,30 em dobro.
 
 ## Discutido e **não** implantado (usuário pediu para deixar como está)
 
@@ -90,17 +98,21 @@ validar contra out/2026; `.xls` das prévias não abre sem biblioteca; perde a c
 PDF × xlsx; `dados/` no git deixa de ser atualizado sozinho (botão de baixar a base);
 planilha de 25 colunas gerada no navegador sem a checagem do LibreOffice; telas para
 exceções autorizadas e reemissões. Proposta: duas etapas (carga + conferência + gravação;
-depois planilha, exceções e comparação de versões). Decisões em aberto: onde guardar,
-`.xls`, xlsx como fonte única.
+depois planilha, exceções e comparação de versões). Em 25/11 o usuário decidiu seguir com
+PDF + xlsx (ver "Fonte dos dados"); xlsx como fonte única fica para depois.
 
 ## Novembro (em andamento)
 
 1. Próximas prévias: se vierem em partes (21–30), passar as três partes no mesmo comando
    (`1_extrair.py <01a10>.pdf <11a20>.pdf <21a30>.pdf 2026-11`); se vier acumulado, um PDF só.
-   Fechamento: `python3 scripts/1_extrair.py entrada/<arquivo>.pdf 2026-11`
-   e `comparar_versoes.py` prévia anterior × nova. Se vier o xlsx, conferir; o `conferir_xlsx.py` acusa diferenças de resumo
-   falsas no layout novo (resumo numa linha só) — conferir os resumos à parte ou ajustar o
-   script.
+   Fechamento: `python3 scripts/1_extrair.py entrada/<arquivo>.pdf 2026-11`. Prévia × definitivo:
+   o `comparar_versoes.py` lê um PDF por lado — com a prévia em partes, comparar parte a parte
+   com o período correspondente ou adaptar o script para aceitar várias partes.
+   Sempre converter o `.xls` e rodar `conferir_xlsx.py` (por parte, com o PDF da mesma parte):
+   linhas têm que dar 0; no fechamento o resumo e a premiação se conferem à parte.
+   Arquivos usados até agora: `comissao_toliman_11.2026_01a10.pdf/.xlsx` e
+   `comissao_toliman_11.2026_11a20.pdf/.xls` (fora do git — pedir de novo se o container
+   for outro).
 2. `python3 scripts/2_planilha.py 2026-11` (só no fechamento), `python3 scripts/regras.py
    2026-11`, `python3 scripts/3_painel.py`, rever o rodapé de `painel/base.html`.
 3. Grupo novo → `comum.GRUPOS` e `SHORT` em `painel/app.js`.
