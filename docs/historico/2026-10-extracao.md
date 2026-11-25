@@ -81,3 +81,36 @@ outubro usados no fechamento). Base mantida como estava; decisão com o usuário
 - Sem mudança: os 84 motoristas, premiação (segue zerada), média, km, grupo e posição; viras.
 - O arquivo novo fecha por dentro (identidades e resumo × linhas), fora o 0765 (frete do resumo
   R$ 8.765,76 acima das linhas, o mesmo do fechamento).
+
+## Versão vigente — PDF e xls reemitidos (recebidos em 25/11/2026)
+
+`comissao_media_viagem_toliman outubro 26.pdf` (88 págs.) + `.xls`. **Substitui a base de
+outubro** a pedido do usuário ("dados para atualizar Outubro 2026"). Comparativo da versão
+anterior × esta em `saida/Comparativo_Versoes_PDF_10_2026.xlsx` (não vai para o git).
+
+- **Totais (84 motoristas, 1.496 lançamentos):** frete R$ 8.994.559,99 · bônus operacional
+  R$ 175.521,39 · **premiação R$ 76.835,97** · total bonificações R$ 252.357,36 · 720 viagens ·
+  viagem+vira 735 · km 441.111 · média da frota 2,1387 (sem mudança) · % bonificação sobre
+  frete 2,8057%.
+- **× versão anterior:** frete −R$ 341.969,15 · bônus operacional −R$ 7.237,74 · premiação
+  +R$ 76.835,97 · bonificações +R$ 69.598,23 · viagens −30 · lançamentos −62. 79 motoristas
+  com valor diferente.
+- **Premiação agora preenchida** (achado 1 resolvido pela fonte): economia R$ 225.256,29,
+  prêmio por economia R$ 65.040,21, bônus por média R$ 11.795,76 (16 motoristas). 79 com
+  economia; 0217, 0039 e 0731 têm km ≥ 4.000 e posição, mas economia e prêmio zero.
+  Média, km, grupo, posição e % de bônus por média iguais à versão anterior.
+- **Período 01/10 a 31/10:** saíram as 62 linhas de 30/09 (achado 3 resolvido; a regra
+  `REPETIDO_MES_ANTERIOR` fica sem ocorrências).
+- **Taxa 1,85% → 1,75%** nas viagens de 0285, 0357, 0563 e 0598.
+- 0753, 0028 e 0136: só o nome do cliente mudou (`OLAM AGRICOLA LTDA.`).
+- **PDF × xls: lançamentos 100% iguais** (1.496). Os resumos foram comparados com o PDF à
+  parte (o `conferir_xlsx.py` segue acusando diferenças falsas de resumo no layout novo).
+- Identidades fecham em 100%. Frete do resumo × linhas: 0765 +R$ 8.765,76 e 0605 −R$ 0,01
+  (mantido o resumo). Eventos `E:` iguais (0616, 0228 R$ 100,00; 0501, 0659 R$ 813,49).
+  Arredondamento de R$ 0,01 em 26 casos (planilha soma as parcelas).
+- Quadro: igual (84 motoristas, ninguém entrou nem saiu × versão anterior).
+- Verificações: pagamento indevido **igual — 7 lançamentos, R$ 506,37** (a reemissão não
+  corrigiu); 7 CT-e de viagem dividida 60/40; RV `FERIAS` do 0757; lona a R$ 15,00 (0606,
+  0797); nenhum CT-e duplicado fora da divisão. Novembro (prévia) sem mudança nos 3 pares
+  `CTE_MES_ANTERIOR`.
+- Planilha `Indicadores_Produtividade_Motoristas_10_2026.xlsx` regerada, recalculada sem erros.
