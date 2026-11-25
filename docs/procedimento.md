@@ -68,7 +68,9 @@ No painel o mês aparece como "· prévia", com aviso no topo; KPIs de km e méd
 "—", sem comparação com o mês anterior; o critério dos 4.000 km não se aplica (fora
 só quem não tem frete); o mês **fica fora da Evolução e do histórico** do motorista.
 Verificações, Pagamento indevido e Confrontos funcionam normalmente. A planilha de 25
-colunas só no fechamento. Quando vier o PDF definitivo, rodar `1_extrair.py` de novo
+colunas só no fechamento. Se o Rodopar mandar a prévia **em partes** (períodos seguidos, ex.: 01–10 e 11–20/11/2026), passar
+todos os PDFs no mesmo comando, `1_extrair.py <parte1>.pdf <parte2>.pdf AAAA-MM`: soma o resumo
+por motorista, junta as movimentações e recusa períodos sobrepostos. Quando vier o PDF definitivo, rodar `1_extrair.py` de novo
 (o `.meta.json` é apagado) e `comparar_versoes.py` prévia × definitivo.
 
 ## Movimentações e regras de verificação

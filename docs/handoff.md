@@ -6,8 +6,9 @@ está feito, o que ficou em aberto e o que foi só discutido.
 
 ## Estado
 
-- **Meses no painel:** jul, ago, set, out/2026 (fechamento; versão reemitida em 25/11) e **nov/2026 — 1ª prévia,
-  01 a 10/11** (`docs/historico/2026-11-previa.md`; PDF × xlsx 100% iguais).
+- **Meses no painel:** jul, ago, set, out/2026 (fechamento; versão reemitida em 25/11) e **nov/2026 — 2ª prévia,
+  01 a 20/11**, soma dos relatórios 01–10 e 11–20 (`docs/historico/2026-11-previa.md`; PDF × xls
+  100% iguais nas duas partes).
   `dados/*.json` + `dados/lancamentos/2026-09.json` e `2026-10.json` (jul e ago sem
   movimentações).
 - **Painel = sistema do Padrão de Sistemas Tóliman (19/11/2026)**
@@ -61,6 +62,8 @@ está feito, o que ficou em aberto e o que foi só discutido.
    R$ 608,22, frete inteiro (não é 60/40). Regra `CTE_MES_ANTERIOR` criada a pedido do
    usuário; os casos aparecem nas verificações e no Confrontos. Falta a decisão sobre o
    pagamento.
+7. Novembro (11–20) — 3 CT-e com frete inteiro em dois motoristas (01-1-136964 0898×0269,
+   01-1-136990 0898×0605, 01-1-137170 0863×0526): frete R$ 20.759,73 e bônus R$ 363,30 em dobro.
 
 ## Discutido e **não** implantado (usuário pediu para deixar como está)
 
@@ -77,7 +80,9 @@ depois planilha, exceções e comparação de versões). Decisões em aberto: on
 
 ## Novembro (em andamento)
 
-1. Próximas prévias / fechamento: `python3 scripts/1_extrair.py entrada/<arquivo>.pdf 2026-11`
+1. Próximas prévias: se vierem em partes (21–30), passar as três partes no mesmo comando
+   (`1_extrair.py <01a10>.pdf <11a20>.pdf <21a30>.pdf 2026-11`); se vier acumulado, um PDF só.
+   Fechamento: `python3 scripts/1_extrair.py entrada/<arquivo>.pdf 2026-11`
    e `comparar_versoes.py` prévia anterior × nova. Se vier o xlsx, conferir; o `conferir_xlsx.py` acusa diferenças de resumo
    falsas no layout novo (resumo numa linha só) — conferir os resumos à parte ou ajustar o
    script.

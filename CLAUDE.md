@@ -9,6 +9,7 @@ multimês.
 | Comando | O que faz |
 |---|---|
 | `python3 scripts/1_extrair.py entrada/<arquivo>.pdf AAAA-MM` | Lê o PDF, confere lançamentos × resumos, grava `dados/AAAA-MM.json` e imprime o relatório de conferência (detalhe em `saida/conferencia_AAAA-MM.json`) |
+| `python3 scripts/1_extrair.py entrada/<parte1>.pdf entrada/<parte2>.pdf AAAA-MM` | Prévia em partes (períodos seguidos): soma as partes por motorista |
 | `python3 scripts/2_planilha.py AAAA-MM` | Gera `saida/Indicadores_Produtividade_Motoristas_MM_AAAA.xlsx` já recalculado pelo LibreOffice e conferido sem erros |
 | `python3 scripts/regras.py AAAA-MM` | Roda as regras de verificação sobre as movimentações do mês (`dados/lancamentos/AAAA-MM.json`) e lista as ocorrências |
 | `python3 scripts/comparar_versoes.py entrada/<pago>.pdf entrada/<novo>.pdf AAAA-MM` | Compara duas versões do PDF do mesmo mês (reemissão) e gera `saida/Comparativo_Versoes_PDF_MM_AAAA.xlsx` com o acerto por motorista e as diferenças lançamento a lançamento |

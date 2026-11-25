@@ -1,7 +1,11 @@
 #!/usr/bin/env python3
 """Lê o PDF "Planilha de comissão" do Rodopar e grava dados/AAAA-MM.json.
 
-Uso: python3 scripts/1_extrair.py entrada/<arquivo>.pdf AAAA-MM
+Uso: python3 scripts/1_extrair.py entrada/<arquivo>.pdf [entrada/<outro>.pdf ...] AAAA-MM
+
+Prévias parciais (relatório só de bônus com períodos seguidos, ex.: 01–10 e 11–20) podem
+vir em vários PDFs: são somadas por motorista e as movimentações juntadas na ordem dos
+arquivos. Fechamento (com RESUMO PRÊMIO POR MÉDIA) é sempre um PDF só.
 
 Confere os lançamentos de cada bloco contra os resumos e imprime o relatório de
 conferência. Divergência é achado: o valor gravado é sempre o do resumo.
@@ -190,10 +194,7 @@ CAMPOS_LANC = ['tipo', 'doc', 'data', 'chegada', 'container', 'cliente', 'od', '
                'vg', 'lonaq', 'vira', 'carreg', 'lona', 'viagem']
 
 
-def gravar_lancamentos(mes, txt, movs, rows):
-    """dados/lancamentos/AAAA-MM.json: todas as movimentações do PDF, por motorista,
-    com o período do fechamento e as rubricas do RESUMO DO BÔNUS de cada motorista (o que
-    entrou para pagamento). Base do detalhe no painel e das verificações."""
+def periodo_txt(txt):
     per = {}
     for chave, rot in (('viagens', 'FECHAMENTO DE VIAGENS'), ('media', 'FECHAMENTO DE MÉDIA')):
         m = re.search(rot + r':\s*(\d{2}/\d{2}/\d{4})[^-]*-\s*(\d{2}/\d{2}/\d{4})', txt)
@@ -202,6 +203,13 @@ def gravar_lancamentos(mes, txt, movs, rows):
     m = re.search(r'PERÍODO DE (\d{2}/\d{2}/\d{4}) ATÉ (\d{2}/\d{2}/\d{4})', txt)  # prévia
     if 'viagens' not in per and m:
         per['viagens'] = list(m.groups())
+    return per
+
+
+def gravar_lancamentos(mes, per, movs, rows):
+    """dados/lancamentos/AAAA-MM.json: todas as movimentações do PDF, por motorista,
+    com o período do fechamento e as rubricas do RESUMO DO BÔNUS de cada motorista (o que
+    entrou para pagamento). Base do detalhe no painel e das verificações."""
     dest = RAIZ / 'dados' / 'lancamentos' / f'{mes}.json'
     dest.parent.mkdir(exist_ok=True)
     corpo = {'periodo': per, 'campos': CAMPOS_LANC,
@@ -322,41 +330,100 @@ def processar(pdf):
     return rows, movs, rel, txt
 
 
+def dma(d):
+    return d[6:] + d[3:5] + d[:2]
+
+
+SOMAR = ['frete', 'bonusOp', 'premTot', 'bonif', 'viag', 'vira', '_vViag', '_vVira', '_vCarreg', '_vLona',
+         '_nLanc', '_freteLinhas']
+
+
+def juntar_previas(partes, rel):
+    """Soma por motorista os relatórios de prévia de períodos seguidos do mesmo mês."""
+    por_cod, movs = {}, {}
+    for rows, mv, _rel, _txt in partes:
+        for r in rows:
+            if r['cod'] not in por_cod:
+                por_cod[r['cod']] = dict(r)
+            else:
+                t = por_cod[r['cod']]
+                for k in SOMAR:
+                    t[k] = round(t[k] + r[k], 2)
+                t['nome'] = r['nome']
+        for cod, ls in mv.items():
+            movs.setdefault(cod, []).extend(ls)
+    # o mesmo lançamento em dois relatórios = períodos sobrepostos
+    for cod, ls in movs.items():
+        vistos = {}
+        for x in ls:
+            ch = (x['doc'], x['cte'], x['data'], x['od'])
+            if ch in vistos and x['tipo'] != 'E':
+                rel['falhas'].append(f'{cod}: lançamento {x["doc"]} CT-e {x["cte"]} {x["data"]} em mais de um relatório')
+            vistos[ch] = 1
+    rows = sorted(por_cod.values(), key=lambda r: r['nome'])
+    return rows, movs
+
+
 def main():
-    if len(sys.argv) != 3 or not re.fullmatch(r'\d{4}-\d{2}', sys.argv[2]):
+    if len(sys.argv) < 3 or not re.fullmatch(r'\d{4}-\d{2}', sys.argv[-1]):
         sys.exit(__doc__)
-    pdf, mes = Path(sys.argv[1]), sys.argv[2]
-    rows, movs, rel, txt = processar(pdf)
+    pdfs, mes = [Path(x) for x in sys.argv[1:-1]], sys.argv[-1]
+    partes = [processar(p) for p in pdfs]
+    previa = all(eh_previa(pt[3]) for pt in partes)
+    pers = [periodo_txt(pt[3]) for pt in partes]
+    if len(partes) == 1:
+        rows, movs, rel, txt = partes[0]
+        per = pers[0]
+    else:
+        if not previa:
+            sys.exit('Vários PDFs só para prévias (relatório sem RESUMO PRÊMIO POR MÉDIA); o fechamento é um PDF só.')
+        ordem = sorted(range(len(partes)), key=lambda i: dma(pers[i]['viagens'][0]))
+        partes, pers, pdfs = [partes[i] for i in ordem], [pers[i] for i in ordem], [pdfs[i] for i in ordem]
+        for i in range(1, len(pers)):
+            if dma(pers[i]['viagens'][0]) <= dma(pers[i - 1]['viagens'][1]):
+                sys.exit(f'Períodos sobrepostos: {pers[i - 1]["viagens"]} e {pers[i]["viagens"]}')
+        rel = {k: ([] if isinstance(v, list) else 0) for k, v in partes[0][2].items()}
+        for (_r, _m, rl, _t), p in zip(partes, pdfs):
+            for k, v in rl.items():
+                if isinstance(v, list):
+                    rel[k] += [f'[{p.name}] {x}' for x in v]
+                else:
+                    rel[k] += v
+        rows, movs = juntar_previas(partes, rel)
+        per = {'viagens': [pers[0]['viagens'][0], pers[-1]['viagens'][1]]}
+        txt = partes[-1][3]
     aplicar_ajustes(rows, mes, rel)
     derivar(rows)
 
     dest = RAIZ / 'dados' / f'{mes}.json'
     publico = [{k: v for k, v in r.items() if not k.startswith('_')} for r in rows]
     dest.write_text(json.dumps(publico, ensure_ascii=False, indent=1) + '\n', encoding='utf8')
-    gravar_lancamentos(mes, txt, movs, rows)
+    gravar_lancamentos(mes, per, movs, rows)
     # dados/AAAA-MM.meta.json marca o mês como prévia (sem média); o fechamento definitivo apaga
     meta = RAIZ / 'dados' / f'{mes}.meta.json'
-    if eh_previa(txt):
+    if previa:
         em = re.search(r'Data\s*:\s*(\d{2}/\d{2}/\d{4})', txt)
-        pe = re.search(r'PERÍODO DE (\d{2}/\d{2}/\d{4}) ATÉ (\d{2}/\d{2}/\d{4})', txt)
         datas = [x['data'] for ls in movs.values() for x in ls if x['data']]
-        ult = max(datas, key=lambda d: d[6:] + d[3:5] + d[:2]) if datas else ''
-        meta.write_text(json.dumps({'previa': True, 'emissao': em.group(1) if em else '',
-                                    'periodo': list(pe.groups()) if pe else [],
-                                    'ultimoLancamento': ult[:6] + '20' + ult[6:] if ult else '',
-                                    'arquivo': pdf.name,
-                                    'motivo': 'relatório só de bônus de viagem: sem RESUMO PRÊMIO POR MÉDIA'},
-                                   ensure_ascii=False, indent=1) + '\n', encoding='utf8')
+        ult = max(datas, key=dma) if datas else ''
+        info = {'previa': True, 'emissao': em.group(1) if em else '',
+                'periodo': per.get('viagens', []),
+                'ultimoLancamento': ult[:6] + '20' + ult[6:] if ult else '',
+                'arquivo': ' + '.join(p.name for p in pdfs),
+                'motivo': 'relatório só de bônus de viagem: sem RESUMO PRÊMIO POR MÉDIA'}
+        if len(pdfs) > 1:
+            info['partes'] = [{'arquivo': p.name, 'periodo': pe.get('viagens', [])} for p, pe in zip(pdfs, pers)]
+        meta.write_text(json.dumps(info, ensure_ascii=False, indent=1) + '\n', encoding='utf8')
     elif meta.exists():
         meta.unlink()
     (RAIZ / 'saida').mkdir(exist_ok=True)
     (RAIZ / 'saida' / f'conferencia_{mes}.json').write_text(
         json.dumps({'rows': rows, 'relatorio': rel}, ensure_ascii=False, indent=1), encoding='utf8')
+    nomes = ' + '.join(p.name for p in pdfs)
 
     # --- relatório
     tot = lambda k: round(sum(r[k] for r in rows), 2)  # noqa: E731
-    print(f'== Conferência {mes} — {pdf.name}' + (' — PRÉVIA: sem RESUMO PRÊMIO POR MÉDIA (premiação, km e média zerados)'
-                                                  if eh_previa(txt) else ''))
+    print(f'== Conferência {mes} — {nomes}' + (' — PRÉVIA: sem RESUMO PRÊMIO POR MÉDIA (premiação, km e média zerados)'
+                                                  if previa else ''))
     print(f'Motoristas: {len(rows)} · lançamentos lidos: {sum(r["_nLanc"] for r in rows)}')
     print(f'Frete cliente R$ {tot("frete"):,.2f} · bônus op. R$ {tot("bonusOp"):,.2f} · '
           f'premiação R$ {tot("premTot"):,.2f} · bonificações R$ {tot("bonif"):,.2f}')
