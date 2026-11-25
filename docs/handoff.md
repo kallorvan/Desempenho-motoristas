@@ -34,6 +34,21 @@ está feito, o que ficou em aberto e o que foi só discutido.
   folha), **exceto** `saida/Dashboard_Produtividade_Motoristas.html`, que o padrão manda versionar
   (o conteúdo já está em `dados/`). O container é efêmero — PDF/xlsx precisam ser reenviados pelo usuário.
 
+## Fonte dos dados — decisão de 25/11/2026
+
+**Continuar com os dois documentos:** PDF como fonte (`1_extrair.py`) e xlsx/xls do Rodopar
+como conferência (`conferir_xlsx.py`, tem que dar 0 diferença nas linhas). Levantamento feito
+nos arquivos de out (fechamento reemitido) e nov (prévia 11–20): o xlsx tem todas as
+informações do PDF — lançamentos (cliente completo, data com hora), resumo do bônus e bloco de
+prêmio (média, grupo, posição, economia, prêmio, bônus por média, %, km, total), sem
+arredondamento, e ainda a regra de premiação do grupo. Falta no xlsx: data de emissão e, nas
+prévias (e na reemissão de 24/11), o período. Pendências do lado do xlsx, se um dia virar
+fonte única:
+- `conferir_xlsx.py` não lê o resumo do fechamento (layout em uma linha → diferenças falsas,
+  conferido à parte) nem o bloco de prêmio — a premiação hoje só se confere pelo PDF;
+- arredondar o resumo do xlsx para 2 casas (é o que o PDF imprime e o que se paga);
+- ver como o xlsx trata bloco de prêmio duplicado (caso de ago/2026 no PDF).
+
 ## Regras do usuário implantadas (`scripts/regras.py`)
 
 - Rotas de carregamento (Machado x Machado / Pouso Alegre / Varginha) sem valor de viagem;
