@@ -32,7 +32,14 @@ SharePoint (ver Painel).
 3. **Se houver o export xlsx do Rodopar** (`Comissão Toliman.rpt`), rodar
    `python3 scripts/conferir_xlsx.py entrada/<export>.xlsx entrada/<arquivo>.pdf AAAA-MM`
    antes de fechar os achados: ele tem os valores sem arredondamento e separa
-   divergência real da fonte de efeito do PDF (não traz o bloco de prêmio).
+   divergência real da fonte de efeito do PDF.
+   **Decisão (25/11/2026): trabalhar com os dois documentos** — o PDF é a fonte (traz
+   tudo, inclusive período e data de emissão, e o leitor está validado mês a mês) e o
+   xlsx/xls é a conferência obrigatória quando vier. O xlsx traz todas as informações do
+   PDF (inclusive o bloco de prêmio, sem arredondamento), menos a data de emissão e, nas
+   prévias e na reemissão de 24/11, o período. Diferença de linha PDF × xlsx é achado.
+   O `.xls` das prévias se converte antes:
+   `soffice --headless --convert-to xlsx --outdir <pasta> entrada/<arquivo>.xls`.
    Se o Rodopar **reemitir o PDF de um mês já fechado**, comparar as versões com
    `python3 scripts/comparar_versoes.py entrada/<pago>.pdf entrada/<novo>.pdf AAAA-MM`
    → `saida/Comparativo_Versoes_PDF_MM_AAAA.xlsx` (abas Resumo, Por motorista com
