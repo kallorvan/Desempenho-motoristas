@@ -38,7 +38,7 @@ const SHORT = {
 const gcode = g => SHORT[g] ? SHORT[g][0] : null;
 const short = g => SHORT[g] ? `<span class="gnum num">${SHORT[g][0]}</span>${SHORT[g][1]}` : (g||'—');
 const shortTxt = g => SHORT[g] ? `${SHORT[g][0]} — ${SHORT[g][1]}` : g;
-const GCOL = ['#1C2543','#DD4663','#AE82B1','#F4D38D','#5C6486','#E88A9C','#8FA0C8'];
+const GCOL = ['#112346','#E4536C','#A275B4','#F5CE7A','#6B7A94','#EE8A9C','#98A6BC'];
 
 /* ordem de grupos fixa (união de todos os meses) para a cor não mudar de mês para mês */
 const ALLROWS = MESES.flatMap(m=>DATASETS[m]);
@@ -47,6 +47,8 @@ const GROUPS = [...new Set(ALLROWS.map(d=>d.grupo))].sort((a,b)=>
 const gcol = g => GCOL[GROUPS.indexOf(g) % GCOL.length];
 
 const isManobrista = d => d.frete === 0;
+/* período do mês para os nomes das exportações: do dia 1 até onde vão os dados (AAAA-MM-DD) */
+const periodoISO = m => { const a = (ATE[m]||'').split('/'); return [m+'-01', a.length===3 ? `${a[2]}-${a[1]}-${a[0]}` : m+'-01']; };
 
 /* critério de avaliação: só quem rodou ao menos KM_MIN no mês entra nos rankings e
    nas comparações com a frota; os totais da frota continuam com todos (foi pago) */
@@ -109,7 +111,7 @@ function renderKPIs(){
 function renderComp(el,legEl,items,total){
   el.innerHTML = items.filter(i=>i.v>0).map(i=>
     `<span style="width:${(i.v/total*100)}%;background:${i.c}"></span>`).join('') ||
-    `<span style="width:100%;background:#E7E9F1"></span>`;
+    `<span style="width:100%;background:#EEF1F6"></span>`;
   legEl.innerHTML = items.map(i=>
     `<div class="leg-row"><span class="sw" style="background:${i.c}"></span>
      <span>${i.k}</span>
@@ -392,7 +394,7 @@ function renderMov(d){
     {todas:'Todos os lançamentos', alerta:'Só com alerta', qualquer:'Com qualquer verificação'}[k]}</button>`).join('');
   const nivelLinha = i => { const f = F[i]||[]; return f.some(x=>REGRA[x[0]].nivel==='alerta') ? 'al' : (f.length ? 'inf' : ''); };
   const idx = L.map((_,i)=>i).filter(i=> movFiltro==='todas' || (movFiltro==='alerta' ? nivelLinha(i)==='al' : (F[i]||[]).length));
-  const v = x => x ? brl(x) : '<span style="color:#B9BFD2">0,00</span>';
+  const v = x => x ? brl(x) : '<span style="color:#B4BFD0">0,00</span>';
   const H = ['Documento','Data','Chegada','Container','Cliente','Origem / Destino','T. Frete','CT-e','Nº RV','VG','Lona','Vira','Carregamento','Lona (R$)','Viagem'];
   const rows = idx.map(i=>{ const x = L[i], f = F[i]||[];
     return `<tr class="${nivelLinha(i)} ${f.length?'tem':''}">
@@ -405,7 +407,7 @@ function renderMov(d){
       <td class="num">${v(x.vira)}</td><td class="num">${v(x.carreg)}</td><td class="num">${v(x.lona)}</td><td class="num">${v(x.viagem)}</td>
     </tr>${f.length?`<tr class="sub ${nivelLinha(i)}"><td colspan="15"><div class="subin">${f.map(([id,msg])=>
       `<span class="fi"><span class="flag ${REGRA[id].nivel}" title="${esc(REGRA[id].descricao)}">${REGRA[id].curto}</span><span class="fmsg">${esc(msg)}</span>${
-        (id==='CTE_FRETE_DUP'||id==='VIAGEM_DIVIDIDA')?` <button class="link" data-cte="${esc(x.cte)}">ver lado a lado</button>`:''}</span>`).join('')}</div></td></tr>`:''}`; }).join('');
+        (id==='CTE_FRETE_DUP'||id==='VIAGEM_DIVIDIDA'||id==='CTE_MES_ANTERIOR')?` <button class="link" data-cte="${esc(x.cte)}">ver lado a lado</button>`:''}</span>`).join('')}</div></td></tr>`:''}`; }).join('');
   const s = k => L.reduce((a,x)=>a+x[k],0);
  box.innerHTML = `<table><thead><tr>${H.map((h,i)=>`<th style="text-align:${[0,3,4,5].includes(i)?'left':'right'}">${h}</th>`).join('')}</tr></thead>
     <tbody>${rows || `<tr><td colspan="15" style="text-align:center;color:var(--muted);padding:20px">Nenhum lançamento com esse filtro.</td></tr>`}</tbody>
@@ -594,7 +596,7 @@ function relatorioVerificacoes(meses, comInfo){
   if(fr.length===1) fr.push(['', '', 'Nenhuma diferença no período.']);
 
   /* Confronto lado a lado: uma linha por CT-e, lançamento A e B nas colunas */
-  const cfc = [['doc','Documento'],['data','Data'],['chegada','Chegada'],['container','Container'],['od','Origem / Destino'],
+  const cfc = [['mes','Mês'],['doc','Documento'],['data','Data'],['chegada','Chegada'],['container','Container'],['od','Origem / Destino'],
                ['frete','T. Frete'],['rv','Nº RV'],['vg','VG'],['viagem','Bônus viagem']];
   const nMax = Math.max(2, ...meses.flatMap(m=>confrontosDe(m).map(c=>c.itens.length)));
   const cf = [['Mês','CT-e','Leitura','Campos que diferem','Checagem','Observações',
@@ -614,7 +616,7 @@ function relatorioVerificacoes(meses, comInfo){
     {name:'Resumo', rows:resumo, header:4, widths:[13,44,90,...(meses.length>1?meses.map(()=>9):[]),13,12]},
     {name:'Ocorrências', rows:ocRows, header:0, widths:[8,12,34,70,7,34,30,6,16,10,10,16,30,34,12,15,10,5,9,9,13,10,10]},
     {name:'Pagamento indevido', rows:pi, header:0, widths:[8,7,34,30,16,10,34,15,16,5,34,13,19,13,24,50,22,16]},
-    {name:'Confronto CT-e', rows:cf, header:0, widths:[8,14,62,34,24,50, ...Array.from({length:nMax},()=>[7,32,15,10,10,15,32,12,10,5,12]).flat()]},
+    {name:'Confronto CT-e', rows:cf, header:0, widths:[8,14,62,34,24,50, ...Array.from({length:nMax},()=>[7,32,8,15,10,10,15,32,12,10,5,12]).flat()]},
     {name:'Frete x lançamentos', rows:fr, header:0, widths:[8,7,36,18,20,13,46]}
   ]);
 }
@@ -650,7 +652,7 @@ document.getElementById('rel-btn').addEventListener('click', async ()=>{
   const v = document.getElementById('rel-per').value; if(!v) return;
   const meses = v==='todos' ? MESES.filter(m=>LANC[m]) : [v];
   const comInfo = document.getElementById('rel-info').checked;
-  const nome = `Verificacoes_Motoristas_${v==='todos' ? meses[0]+'_a_'+meses[meses.length-1] : v}.xlsx`;
+  const nome = nomeExport('verificacoes', periodoISO(meses[0])[0], periodoISO(meses[meses.length-1])[1], 'xlsx');
   btn.disabled = true; msg.textContent = 'Gerando…';
   try{
     const st = await salvarArquivo(nome, relatorioVerificacoes(meses, comInfo));
@@ -664,7 +666,7 @@ document.getElementById('rel-btn').addEventListener('click', async ()=>{
 
 /* ================= CONFRONTOS (CT-e com frete em mais de um lançamento) ================= */
 const CF_CAMPOS = [
-  ['cod','Motorista'],['doc','Documento'],['tipo','Tipo'],['data','Data'],['chegada','Chegada'],['container','Container'],
+  ['mes','Mês'],['cod','Motorista'],['doc','Documento'],['tipo','Tipo'],['data','Data'],['chegada','Chegada'],['container','Container'],
   ['cliente','Cliente'],['od','Origem / Destino'],['frete','T. Frete'],['rv','Nº RV'],['vg','VG (viagem contada)'],
   ['lonaq','Lona (qtd)'],['vira','Vira'],['carreg','Carregamento'],['lona','Lona (R$)'],['viagem','Bônus de viagem']];
 const CF_MOEDA = new Set(['frete','vira','carreg','lona','viagem']);
@@ -672,13 +674,15 @@ function confrontosDe(mes){
   const L = LANC[mes]; if(!L) return [];
   const nome = Object.fromEntries(DATASETS[mes].map(d=>[d.cod,d.nome]));
   return L.dup.map(g=>{
-    const itens = g.itens.map(([cod,i])=>({cod, i, nome:nome[cod]||cod, x:Object.fromEntries(L.campos.map((c,k)=>[c, L.mot[cod][i][k]])),
-      local: ((L.flags[cod]||{})[i]||[]).some(f=>f[0]==='ROTA_CARREGAMENTO')}));
+    const itens = g.itens.map(([cod,i,m])=>{ const Lm = m && LANC[m] ? LANC[m] : L, mm = m && LANC[m] ? m : mes;
+      const nm = mm===mes ? nome : Object.fromEntries((DATASETS[mm]||[]).map(d=>[d.cod,d.nome]));
+      return {cod, i, mes:mm, nome:nm[cod]||cod, x:{...Object.fromEntries(Lm.campos.map((c,k)=>[c, Lm.mot[cod][i][k]])), mes:mshort(mm).replace('*','')},
+        local: ((Lm.flags[cod]||{})[i]||[]).some(f=>f[0]==='ROTA_CARREGAMENTO')}; });
     const difs = CF_CAMPOS.map(c=>c[0]).filter(k=>new Set(itens.map(it=> k==='cod' ? it.cod : it.x[k])).size>1);
     const mesmo = new Set(itens.map(it=>it.cod)).size===1;
     const trecho = new Set(itens.map(it=>it.x.od)).size===1;
     if(g.divisao) itens.forEach((it,k)=>{ it.pct = g.divisao[k]; });
-    return {cte:g.cte, itens, difs, mesmo, trecho, local: itens.some(it=>it.local), div: !!g.divisao,
+    return {cte:g.cte, itens, difs, mesmo, trecho, local: itens.some(it=>it.local), div: !!g.divisao, ant: itens.some(it=>it.mes!==mes),
       frete: itens.reduce((a,it)=>a+it.x.frete,0), bonus: itens.reduce((a,it)=>a+it.x.viagem,0),
       vg: itens.reduce((a,it)=>a+it.x.vg,0)};
   }).sort((a,b)=> (a.div-b.div) || (b.mesmo-a.mesmo) || (b.trecho-a.trecho) || (b.local-a.local) || (b.frete-a.frete));
@@ -686,6 +690,7 @@ function confrontosDe(mes){
 function cfLeitura(c){
   const p = [];
   if(c.div) p.push(`Viagem dividida ${c.itens.map((it,i)=>`${String.fromCharCode(65+i)} ${it.pct}%`).join(' / ')} — confere com a regra (frete do CT-e R$ ${brl(c.frete)})`);
+  if(c.ant && !c.div) p.push(`CT-e com frete também em ${mlab(c.itens.find(it=>it.mes!==MES)?.mes||'')} — possível frete e bônus nos dois meses`);
   p.push(c.mesmo ? 'Mesmo motorista' : 'Motoristas diferentes');
   p.push(c.trecho ? 'mesmo trecho' : 'trechos diferentes');
   if(c.difs.includes('container')) p.push('containers diferentes'); else if(c.itens[0].x.container) p.push('mesmo container');
@@ -705,6 +710,7 @@ function renderConfrontos(){
   k.innerHTML = [
     ['CT-e em confronto', cs.length, `${cs.reduce((a,c)=>a+c.itens.length,0)} lançamentos`, ''],
     ['Viagem dividida 60/40', tot(c=>c.div), `${tot(c=>!c.div)} fora da regra (possível duplicidade)`, 'k2'],
+    ...(tot(c=>c.ant) ? [['Com o mês anterior', tot(c=>c.ant), 'CT-e com frete também no mês anterior', 'k1']] : []),
     ['Mesmo motorista', tot(c=>c.mesmo), `${tot(c=>!c.mesmo)} entre motoristas diferentes`, 'k1'],
     ['Mesmo trecho', tot(c=>c.trecho), `${tot(c=>!c.trecho)} com trechos diferentes`, 'k2'],
     ['Com rota de carregamento', tot(c=>c.local), 'um dos lançamentos é rota local com valor de viagem', 'k1'],
@@ -713,7 +719,7 @@ function renderConfrontos(){
     ...(COLAB.modo ? [(r=>['Checados', `${r.f} de ${r.n}`, 'verificados ou corrigidos no Rodopar', 'k2'])(ckResumo(cs.map(c=>ckChaveCF(MES,c.cte))))] : [])
   ].map(([l,v,s,c])=>`<div class="kpi ${c}"><div class="lab">${l}</div><div class="val"><span class="num">${v}</span></div><div class="sub">${s}</div></div>`).join('');
   const q = document.getElementById('cf-q').value.trim().toLowerCase(), f = document.getElementById('cf-f').value;
-  const vis = cs.filter(c=> (f==='todos' || (f==='mesmo'&&c.mesmo) || (f==='entre'&&!c.mesmo) || (f==='trecho'&&c.trecho) || (f==='outro'&&!c.trecho) || (f==='local'&&c.local) || (f==='div'&&c.div) || (f==='foradiv'&&!c.div))
+  const vis = cs.filter(c=> (f==='todos' || (f==='mesmo'&&c.mesmo) || (f==='entre'&&!c.mesmo) || (f==='trecho'&&c.trecho) || (f==='outro'&&!c.trecho) || (f==='local'&&c.local) || (f==='div'&&c.div) || (f==='foradiv'&&!c.div) || (f==='ant'&&c.ant))
     && (!q || c.cte.toLowerCase().includes(q) || c.itens.some(it=>it.nome.toLowerCase().includes(q)||it.cod.includes(q)||it.x.doc.toLowerCase().includes(q))));
   const letra = i => String.fromCharCode(65+i);
   const fmt = (k,v,it)=> k==='cod' ? `${esc(it.nome)} <span class="gtag num">${it.cod}</span>` : CF_MOEDA.has(k) ? 'R$ '+brl(v) : esc(v===''?'—':v);
@@ -723,6 +729,7 @@ function renderConfrontos(){
         <div><div class="ct num">CT-e ${esc(c.cte)}</div><div style="font-size:11.5px;color:var(--ink2);margin-top:3px">${cfLeitura(c)}</div></div>
         <div class="bd">
           ${c.div?'<span class="flag ok">viagem dividida 60/40</span>':''}
+          ${c.ant?'<span class="flag alerta">mês anterior</span>':''}
           <span class="flag ${c.mesmo?'alerta':'info'}">${c.mesmo?'mesmo motorista':'entre motoristas'}</span>
           <span class="flag ${c.trecho?'alerta':'info'}">${c.trecho?'mesmo trecho':'trechos diferentes'}</span>
           ${c.local?'<span class="flag alerta">rota de carregamento</span>':''}
@@ -730,13 +737,15 @@ function renderConfrontos(){
         <div class="vv num">frete R$ ${brl(c.frete)} · bônus R$ ${brl(c.bonus)} · VG ${c.vg}</div>
       </div>
       <div style="overflow-x:auto"><table class="cf-t">
-        <thead><tr><th>Campo</th>${c.itens.map((it,i)=>`<th>Lançamento ${letra(i)}${it.pct?` · ${it.pct}%`:''} · <button data-cod="${it.cod}" title="Abrir a ficha do motorista">${esc(it.nome.split(' ')[0])} ${it.cod}</button>${it.local?' · <span style="color:#F4D38D">rota de carregamento</span>':''}</th>`).join('')}</tr></thead>
+        <thead><tr><th>Campo</th>${c.itens.map((it,i)=>`<th>Lançamento ${letra(i)}${it.pct?` · ${it.pct}%`:''} · ${it.mes===MES ? `<button data-cod="${it.cod}" title="Abrir a ficha do motorista">${esc(it.nome.split(' ')[0])} ${it.cod}</button>` : `${esc(it.nome.split(' ')[0])} ${it.cod} · ${esc(it.x.mes)}`}${it.local?' · <span style="color:#F4D38D">rota de carregamento</span>':''}</th>`).join('')}</tr></thead>
         <tbody>${c.div?`<tr><th>Parte do frete do CT-e</th>${c.itens.map(it=>`<td class="num"><b>${it.pct}%</b> de R$ ${brl(c.frete)}</td>`).join('')}</tr>`:''}${CF_CAMPOS.map(([kk,l])=>`<tr class="${c.difs.includes(kk)?'dif':''}"><th>${l}</th>${c.itens.map(it=>
           `<td class="${CF_MOEDA.has(kk)||['doc','data','chegada','container','rv','vg','lonaq'].includes(kk)?'num':''}">${fmt(kk, kk==='cod'?it.cod:it.x[kk], it)}</td>`).join('')}</tr>`).join('')}</tbody>
       </table></div>
       <div class="cf-foot">${(h=>h?h+'<br>':'')(ckHtml(ckChaveCF(MES,c.cte), 'cf', MES, `CT-e ${c.cte} · ${c.itens.map(it=>`${it.nome} (${it.cod}) doc. ${it.x.doc}`).join(' × ')}`))}${c.difs.length ? `Diferem: ${c.difs.map(d=>CF_CAMPOS.find(x=>x[0]===d)[1]).join(', ')}.` : 'Todos os campos iguais.'}
         ${c.vg>1 ? ` <strong>Viagem contada ${c.vg} vezes (VG).</strong>` : ''}</div>
-    </div>`).join('') || `<div class="card pad" style="color:var(--muted);font-size:12.5px">Nenhum confronto com esse filtro.</div>`;
+    </div>`).join('') || `<div class="card pad" style="color:var(--muted);font-size:12.5px">${f==='foradiv' && !q
+      ? `Nenhum CT-e precisa de conferência em ${mlab(MES)}.${tot(c=>c.div) ? ` ${tot(c=>c.div)} viagem(ns) dividida(s) 60/40 conferem com a regra — veja no filtro “Viagem dividida 60/40”.` : ''}`
+      : 'Nenhum confronto com esse filtro.'}</div>`;
   if(CF_ALVO){
     const el = document.getElementById('cf-'+CF_ALVO);
     if(el){ el.classList.add('alvo'); setTimeout(()=>{ const y = el.getBoundingClientRect().top + scrollY - topHdr.offsetHeight - 12; scrollTo({top:y,behavior:'smooth'}); },60); }
@@ -744,7 +753,8 @@ function renderConfrontos(){
   }
 }
 function abrirConfronto(cte){
-  document.getElementById('cf-q').value = ''; document.getElementById('cf-f').value = 'todos';
+  const alvo = confrontosDe(MES).find(c=>c.cte===cte);
+  document.getElementById('cf-q').value = ''; document.getElementById('cf-f').value = alvo && alvo.div ? 'div' : 'foradiv';
   CF_ALVO = cte; setTab('tab-conf'); renderConfrontos();
 }
 document.getElementById('cf-q').addEventListener('input',renderConfrontos);
@@ -801,7 +811,7 @@ document.getElementById('pi-callout').addEventListener('click',e=>{ if(e.target.
 document.getElementById('pi-btn').addEventListener('click', async ()=>{
   const btn = document.getElementById('pi-btn'), msg = document.getElementById('pi-msg');
   if(!LANC[MES]) return;
-  const nome = `Pagamento_Indevido_Viagem_${MES}.xlsx`;
+  const nome = nomeExport('pagamento_indevido', ...periodoISO(MES), 'xlsx');
   btn.disabled = true; msg.textContent = 'Gerando…';
   try{
     const blob = XLSX_MIN.build([{name:'Pagamento indevido', rows:planilhaIndevido([MES]), header:0,
@@ -832,7 +842,7 @@ function renderVerif(){
     const casos = [];
     Object.entries(L.flags).forEach(([cod,porI])=>Object.entries(porI).forEach(([i,fs])=>fs.forEach(([id,msg])=>{
       if(id===r.id){ const x = L.mot[cod][i]; casos.push({cod, doc:x[L.campos.indexOf('doc')], data:x[L.campos.indexOf('data')], msg,
-        cte: (id==='CTE_FRETE_DUP'||id==='VIAGEM_DIVIDIDA') ? x[L.campos.indexOf('cte')] : ''}); }
+        cte: (id==='CTE_FRETE_DUP'||id==='VIAGEM_DIVIDIDA'||id==='CTE_MES_ANTERIOR') ? x[L.campos.indexOf('cte')] : ''}); }
     })));
     casos.sort((a,b)=> (nome[a.cod]||'').localeCompare(nome[b.cod]||'','pt-BR'));
     return `<details class="vr ${c.lanc?'':'zero'}" ${c.lanc?'':'onclick="return false"'}>
@@ -958,7 +968,7 @@ function renderEvolucao(){
         ${MESES_FECH.map(m=>{
           const p = r.s.find(x=>x.mes===m);
           return `<div class="evr-line"><i>${mshort(m)}</i>
-            <div class="track thin"><div class="fill" style="width:${Math.max((p.v||0)/scale*100,0.6)}%;background:${m===A?'var(--ink)':'#B9BFD2'}"></div></div>
+            <div class="track thin"><div class="fill" style="width:${Math.max((p.v||0)/scale*100,0.6)}%;background:${m===A?'var(--g-logo)':'#C9D2E0'}"></div></div>
             <b class="num">${p.v!=null?M.fmt(p.v):'—'}</b></div>`;
         }).join('')}
       </div>
@@ -987,341 +997,22 @@ document.getElementById('ev-list').addEventListener('keydown',e=>{
   const r=e.target.closest('.evr'); if(r){e.preventDefault();openDriver(r.dataset.cod);}
 });
 
-/* ================= COLABORAÇÃO: usuário, quem está online, checagens e registro =================
-   Dois modos, escolhidos sozinhos:
-   - "db": painel publicado no claude.ai (recursos db/room/user da plataforma);
-   - "pasta": arquivo aberto no Edge/Chrome do computador, gravando numa pasta do Teams
-     sincronizada pelo OneDrive (File System Access do navegador, com autorização da pessoa).
-   Sem nenhum dos dois, o painel funciona como antes, sem esses controles. Identificação
-   simples, como pedido: cada pessoa escolhe o próprio nome na lista do administrador. */
-const CK_STATUS = [['pendente','Pendente'],['verificando','Em verificação'],['ok','Verificado — sem correção'],['corrigido','Corrigido no Rodopar']];
-const CK_LAB = Object.fromEntries(CK_STATUS);
-const ONLINE_MIN = 5;   /* modo pasta: "online" = visto nos últimos ONLINE_MIN minutos */
-const COLAB = {modo:'', db:null, room:null, user:null, pasta:null, pastaPendente:null, suportePasta:false,
-  adminPlataforma:false, usuarios:[], checks:{}, log:[], peers:[], vistos:[]};
-let EU = (()=>{ try{ return localStorage.getItem('painel.usuario')||''; }catch(e){ return ''; } })();
-const ckSan = s => String(s).replace(/[^A-Za-z0-9_.~:@+-]/g,'_').slice(0,190);
-const ckChavePI = (m,it)=> ckSan(`pi_${m}_${it.cod}_${it.doc}_${it.cte}`);
-const ckChaveCF = (m,cte)=> ckSan(`cf_${m}_${cte}`);
-const nomeUsuario = id => (COLAB.usuarios.find(u=>u.id===id)||{}).nome || '';
-const quando = iso => { try{ return new Date(iso).toLocaleString('pt-BR',{dateStyle:'short',timeStyle:'short'}); }catch(e){ return iso||''; } };
-const ckOf = k => COLAB.checks[k] || null;
-const novoId = p => p + Date.now().toString(36) + Math.random().toString(36).slice(2,7);
-/* administrador: no painel publicado, quem é Editor; na pasta, quem está marcado como
-   administrador na lista (com a lista vazia, qualquer um cadastra o primeiro) */
-const ehAdmin = () => COLAB.modo==='db' ? COLAB.adminPlataforma
-  : COLAB.modo==='pasta' ? (!COLAB.usuarios.length || !!(COLAB.usuarios.find(u=>u.id===EU)||{}).admin) : false;
-
-/* selo + botão de checagem de um item (pagamento indevido ou confronto) */
-function ckHtml(chave, tipo, mes, desc){
-  if(!COLAB.modo) return '';
-  const c = ckOf(chave), st = c ? c.status : 'pendente';
-  return `<span class="ck"><span class="ck-b ${esc(st)}">${esc(CK_LAB[st]||st)}</span>`
-    + (c && c.usuario ? `<span class="ck-o">${esc(nomeUsuario(c.usuario)||'—')} · ${esc(quando(c.quando))}${c.obs ? ' · '+esc(c.obs) : ''}</span>` : '')
-    + `<button type="button" class="ck-btn" data-ck="${esc(chave)}" data-tipo="${tipo}" data-mes="${esc(mes)}" data-desc="${esc(desc)}">${c ? 'Editar checagem' : 'Registrar checagem'}</button></span>`;
-}
-function ckResumo(chaves){
-  const n = chaves.length, f = chaves.filter(k=>{ const c = ckOf(k); return c && (c.status==='ok' || c.status==='corrigido'); }).length;
-  return {n, f};
-}
-
-/* ---------------- modo pasta: arquivos JSON na pasta do Teams ----------------
-   painel-dados/usuarios.json         lista de usuários (só administradores alteram)
-   painel-dados/registro/<id>.json    eventos de cada pessoa, só acréscimos (sem conflito
-                                      de sincronização entre pessoas; cópias de conflito do
-                                      OneDrive também são lidas e juntadas pelo id do evento)
-   painel-dados/online/<id>.json      "visto por último", renovado a cada minuto */
-const IDB = {
-  abrir(){ return new Promise((ok,er)=>{ const r = indexedDB.open('painel-motoristas',1);
-    r.onupgradeneeded = ()=> r.result.createObjectStore('kv'); r.onsuccess = ()=> ok(r.result); r.onerror = ()=> er(r.error); }); },
-  async get(k){ const d = await IDB.abrir(); return new Promise(ok=>{ const r = d.transaction('kv').objectStore('kv').get(k); r.onsuccess = ()=> ok(r.result); r.onerror = ()=> ok(null); }); },
-  async set(k,v){ const d = await IDB.abrir(); return new Promise(ok=>{ const t = d.transaction('kv','readwrite'); t.objectStore('kv').put(v,k); t.oncomplete = ()=> ok(); t.onerror = ()=> ok(); }); }
-};
-async function pDir(...nomes){ let d = await COLAB.pasta.getDirectoryHandle('painel-dados',{create:true});
-  for(const n of nomes) d = await d.getDirectoryHandle(n,{create:true}); return d; }
-async function pLer(dir, nome){ try{ const f = await (await dir.getFileHandle(nome)).getFile(); return JSON.parse(await f.text()); }catch(e){ return null; } }
-async function pGravar(dir, nome, obj){ const w = await (await dir.getFileHandle(nome,{create:true})).createWritable();
-  await w.write(JSON.stringify(obj, null, 1)); await w.close(); }
-async function pLerTodos(dir){ const out = [];
-  for await (const [nome, h] of dir.entries()) if(h.kind==='file' && nome.toLowerCase().endsWith('.json')) out.push(await pLer(dir, nome));
-  return out.filter(Boolean); }
-function derivarChecks(){
-  const ch = {};
-  for(const r of COLAB.log.slice().reverse()) if(r.acao==='checagem' && r.chave)
-    ch[r.chave] = {tipo:r.tipo, mes:r.mes, ref:r.ref, status:r.para, obs:r.obs||'', usuario:r.usuario, quando:r.quando};
-  COLAB.checks = ch;
-}
-let PASTA_LENDO = false;
-async function pastaAtualizar(){
-  if(COLAB.modo!=='pasta' || PASTA_LENDO) return;
-  PASTA_LENDO = true;
-  try{
-    const base = await pDir();
-    const u = await pLer(base, 'usuarios.json');
-    COLAB.usuarios = u && Array.isArray(u.lista) ? u.lista : [];
-    const vistos = new Map();
-    for(const arr of await pLerTodos(await pDir('registro'))) if(Array.isArray(arr)) for(const r of arr) if(r && r.id) vistos.set(r.id, r);
-    COLAB.log = [...vistos.values()].sort((a,b)=> (a.quando<b.quando) - (a.quando>b.quando));
-    derivarChecks();
-    const lim = Date.now() - ONLINE_MIN*60000;
-    COLAB.vistos = (await pLerTodos(await pDir('online'))).filter(o=>o.usuario && Date.parse(o.visto)>lim);
-    colabRender();
-  }catch(e){
-    COLAB.pastaErro = 'Não foi possível ler a pasta. Confira se ela continua sincronizada e reconecte.';
-    colabRender();
-  }finally{ PASTA_LENDO = false; }
-}
-async function pastaBatida(){
-  if(COLAB.modo!=='pasta' || !EU || document.visibilityState!=='visible') return;
-  try{ await pGravar(await pDir('online'), ckSan(EU)+'.json', {usuario:EU, visto:new Date().toISOString()}); }catch(e){}
-}
-let PASTA_TIMER = null;
-async function pastaIniciar(h){
-  COLAB.pasta = h; COLAB.pastaPendente = null; COLAB.pastaErro = ''; COLAB.modo = 'pasta';
-  await pastaBatida(); await pastaAtualizar();
-  if(!PASTA_TIMER) PASTA_TIMER = setInterval(()=>{ pastaAtualizar(); pastaBatida(); }, 30000);
-}
-async function conectarPasta(){
-  try{
-    const h = COLAB.pastaPendente && (await COLAB.pastaPendente.requestPermission({mode:'readwrite'}))==='granted'
-      ? COLAB.pastaPendente : await window.showDirectoryPicker({id:'painel-motoristas', mode:'readwrite'});
-    try{ await IDB.set('pasta', h); }catch(e){}
-    await pastaIniciar(h);
-  }catch(e){ /* a pessoa cancelou a escolha da pasta */ }
-}
-document.addEventListener('visibilitychange',()=>{ if(document.visibilityState==='visible'){ pastaAtualizar(); pastaBatida(); } });
-
-/* ---------------- gravações (os dois modos) ---------------- */
-async function bkUsuarios(lista){
-  if(COLAB.modo==='db') return COLAB.db.doc('config/usuarios').set({lista, atualizado:new Date().toISOString(), por:EU||''});
-  await pGravar(await pDir(), 'usuarios.json', {lista, atualizado:new Date().toISOString(), por:EU||''});
-  COLAB.usuarios = lista;
-}
-async function bkRegistrar(ev){
-  const r = Object.assign({id:novoId('e'), quando:new Date().toISOString(), usuario:EU||''}, ev);
-  if(COLAB.modo==='db') return COLAB.db.collection('registro').add(r);
-  const dir = await pDir('registro'), nome = ckSan(EU || 'administrador') + '.json';
-  const arr = (await pLer(dir, nome)) || [];
-  arr.push(r); await pGravar(dir, nome, arr);
-  COLAB.log = [r, ...COLAB.log]; derivarChecks();
-}
-async function bkChecagem(chave, doc){
-  if(COLAB.modo==='db') return COLAB.db.doc('checagens/'+chave).set(doc);
-  /* na pasta a situação de cada item sai do próprio registro (último evento do item) */
-}
-
-/* ---------------- cabeçalho: nome, online, administrador, pasta ---------------- */
-function colabRender(){ renderColab(); renderCkAll(); renderRegistro(); if(dlgUs.open) renderUsuarios(); }
-function renderColab(){
-  const el = document.getElementById('colab');
-  if(!COLAB.modo){
-    if(COLAB.suportePasta){
-      el.hidden = false;
-      el.innerHTML = `<button type="button" class="chip" id="colab-pasta">${COLAB.pastaPendente ? 'Reconectar pasta do Teams' : 'Conectar pasta do Teams'}</button>`;
-    }else el.hidden = true;
-    return;
-  }
-  el.hidden = false;
-  const ativos = COLAB.usuarios.filter(u=>u.ativo!==false);
-  if(EU && COLAB.usuarios.length && !COLAB.usuarios.some(u=>u.id===EU)) EU = '';
-  el.innerHTML = `<label class="on-l">Você:
-      <select id="colab-eu" aria-label="Escolha seu nome">
-        <option value="">${ativos.length ? 'Escolha seu nome' : 'Lista de usuários vazia'}</option>
-        ${ativos.map(u=>`<option value="${esc(u.id)}" ${u.id===EU?'selected':''}>${esc(u.nome)}</option>`).join('')}
-      </select></label>
-    <span class="on-l" id="colab-on"></span>
-    ${ehAdmin() ? '<button type="button" class="chip" id="colab-adm">Usuários</button>' : ''}
-    ${COLAB.modo==='pasta' ? `<button type="button" class="chip" id="colab-pasta" title="Pasta onde ficam os dados do painel">Pasta: ${esc(COLAB.pasta.name)}</button>` : ''}
-    ${COLAB.pastaErro ? `<span class="on-l" style="color:#B3243F">${esc(COLAB.pastaErro)}</span>` : ''}`;
-  renderOnline();
-}
-function renderOnline(){
-  const box = document.getElementById('colab-on'); if(!box) return;
-  const l = new Map();
-  if(COLAB.modo==='db'){
-    for(const p of COLAB.peers){
-      if(p.kind!=='viewer') continue;
-      const id = p.presence && typeof p.presence.usuario==='string' ? p.presence.usuario : '';
-      const k = id || ('peer:'+p.peer);
-      if(!l.has(k)) l.set(k, {nome: nomeUsuario(id) || 'sem nome escolhido', eu: p.isMe});
-      else if(p.isMe) l.get(k).eu = true;
-    }
-  }else{
-    for(const o of COLAB.vistos) l.set(o.usuario, {nome: nomeUsuario(o.usuario) || 'usuário removido', eu: o.usuario===EU});
-    if(EU && !l.has(EU)) l.set(EU, {nome: nomeUsuario(EU), eu:true});
-  }
-  const v = [...l.values()];
-  box.innerHTML = v.length ? (COLAB.modo==='db' ? 'Online agora: ' : `Ativos (${ONLINE_MIN} min): `)
-    + v.map(u=>`<span class="on-u">${esc(u.nome)}${u.eu?' (você)':''}</span>`).join('') : '';
-}
-document.getElementById('colab').addEventListener('change',e=>{
-  if(e.target.id!=='colab-eu') return;
-  EU = e.target.value;
-  try{ localStorage.setItem('painel.usuario', EU); }catch(err){}
-  if(COLAB.room) COLAB.room.presence({usuario: EU || null}).catch(()=>{});
-  renderColab(); pastaBatida().then(pastaAtualizar);
-});
-document.getElementById('colab').addEventListener('click',e=>{
-  if(e.target.closest('#colab-adm')) abrirUsuarios();
-  if(e.target.closest('#colab-pasta')) conectarPasta();
-});
-
-/* ---------------- administrador: lista de usuários ---------------- */
-const dlgUs = document.getElementById('dlg-users');
-function renderUsuarios(){
-  const pasta = COLAB.modo==='pasta';
-  document.getElementById('us-list').innerHTML = COLAB.usuarios.map(u=>`<div class="us-row ${u.ativo===false?'inativo':''}">
-      <span class="nm">${esc(u.nome)}${pasta && u.admin ? ' · <b>administrador</b>' : ''}</span>
-      <span style="display:flex;gap:6px">
-        ${pasta ? `<button type="button" class="chip" data-us="${esc(u.id)}" data-op="admin">${u.admin?'Tirar administrador':'Tornar administrador'}</button>` : ''}
-        <button type="button" class="chip" data-us="${esc(u.id)}" data-op="ativo">${u.ativo===false?'Reativar':'Desativar'}</button></span></div>`).join('')
-    || '<div class="ck-ref">Nenhum usuário cadastrado.' + (pasta ? ' O primeiro nome cadastrado fica como administrador.' : '') + '</div>';
-}
-function abrirUsuarios(){ document.getElementById('us-msg').textContent=''; renderUsuarios(); dlgUs.showModal(); }
-async function salvarUsuarios(lista, ev){
-  const msg = document.getElementById('us-msg'); msg.textContent = 'Salvando…';
-  try{ await bkUsuarios(lista); await bkRegistrar(ev); msg.textContent = ''; colabRender(); pastaBatida(); }
-  catch(e){ msg.textContent = COLAB.modo==='db' ? 'Não foi possível salvar. Só o administrador (Editor do painel) altera a lista.'
-    : 'Não foi possível gravar na pasta. Confira se ela está sincronizada e se você pode editá-la.'; }
-}
-document.getElementById('us-add').addEventListener('click',()=>{
-  const inp = document.getElementById('us-nome'), nome = inp.value.trim().replace(/\s+/g,' ');
-  if(!nome) return;
-  if(COLAB.usuarios.some(u=>u.nome.toLowerCase()===nome.toLowerCase())){ document.getElementById('us-msg').textContent='Esse nome já está na lista.'; return; }
-  const u = {id:novoId('u'), nome, ativo:true};
-  if(COLAB.modo==='pasta' && !COLAB.usuarios.length){ u.admin = true; if(!EU){ EU = u.id; try{ localStorage.setItem('painel.usuario', EU); }catch(e){} } }
-  inp.value = '';
-  salvarUsuarios([...COLAB.usuarios, u], {acao:'usuario', tipo:'usuario', chave:u.id, ref:`Usuário cadastrado: ${nome}${u.admin?' (administrador)':''}`, de:'', para:'ativo', obs:''});
-});
-document.getElementById('us-list').addEventListener('click',e=>{
-  const b = e.target.closest('button[data-us]'); if(!b) return;
-  const u = COLAB.usuarios.find(x=>x.id===b.dataset.us); if(!u) return;
-  if(b.dataset.op==='admin'){
-    const admin = !u.admin;
-    if(!admin && COLAB.usuarios.filter(x=>x.admin).length<=1){ document.getElementById('us-msg').textContent='A lista precisa de pelo menos um administrador.'; return; }
-    return salvarUsuarios(COLAB.usuarios.map(x=>x.id===u.id ? Object.assign({}, x, {admin}) : x),
-      {acao:'usuario', tipo:'usuario', chave:u.id, ref:`${u.nome} ${admin?'passou a ser administrador':'deixou de ser administrador'}`, de:'', para:'', obs:''});
-  }
-  const ativo = u.ativo===false;
-  salvarUsuarios(COLAB.usuarios.map(x=>x.id===u.id ? Object.assign({}, x, {ativo}) : x),
-    {acao:'usuario', tipo:'usuario', chave:u.id, ref:`Usuário ${ativo?'reativado':'desativado'}: ${u.nome}`, de:ativo?'inativo':'ativo', para:ativo?'ativo':'inativo', obs:''});
-});
-document.getElementById('us-close').addEventListener('click',()=>dlgUs.close());
-
-/* ---------------- checagem de um item ---------------- */
-const dlgCk = document.getElementById('dlg-ck');
-let CK_ATUAL = null;
-document.getElementById('ck-status').innerHTML = CK_STATUS.map(([v,l])=>`<option value="${v}">${l}</option>`).join('');
-function abrirChecagem(b){
-  CK_ATUAL = {chave:b.dataset.ck, tipo:b.dataset.tipo, mes:b.dataset.mes, desc:b.dataset.desc};
-  const c = ckOf(CK_ATUAL.chave);
-  document.getElementById('ck-tit').textContent = CK_ATUAL.tipo==='cf' ? 'Checagem do confronto' : 'Checagem do pagamento indevido';
-  document.getElementById('ck-ref').textContent = `${mlab(CK_ATUAL.mes)} · ${CK_ATUAL.desc}`;
-  document.getElementById('ck-status').value = c ? c.status : 'pendente';
-  document.getElementById('ck-obs').value = c ? (c.obs||'') : '';
-  document.getElementById('ck-msg').textContent = EU ? '' : 'Escolha seu nome no topo do painel antes de salvar.';
-  const hist = COLAB.log.filter(r=>r.chave===CK_ATUAL.chave);
-  document.getElementById('ck-hist').innerHTML = hist.length
-    ? '<b>Histórico</b>' + hist.map(r=>`<div>${esc(quando(r.quando))} · <b>${esc(nomeUsuario(r.usuario)||'—')}</b> · ${esc(CK_LAB[r.de]||r.de||'—')} → ${esc(CK_LAB[r.para]||r.para||'—')}${r.obs?' · '+esc(r.obs):''}</div>`).join('')
-    : '<span>Sem checagens registradas.</span>';
-  dlgCk.showModal();
-}
-document.getElementById('ck-cancel').addEventListener('click',()=>dlgCk.close());
-document.getElementById('ck-form').addEventListener('submit', async e=>{
-  e.preventDefault();
-  const msg = document.getElementById('ck-msg');
-  if(!EU){ msg.textContent = 'Escolha seu nome no topo do painel antes de salvar.'; return; }
-  const status = document.getElementById('ck-status').value, obs = document.getElementById('ck-obs').value.trim();
-  const ant = ckOf(CK_ATUAL.chave);
-  if(ant && ant.status===status && (ant.obs||'')===obs){ dlgCk.close(); return; }
-  const btn = document.getElementById('ck-save'); btn.disabled = true; msg.textContent = 'Salvando…';
-  try{
-    await bkChecagem(CK_ATUAL.chave, {tipo:CK_ATUAL.tipo, mes:CK_ATUAL.mes, ref:CK_ATUAL.desc, status, obs, usuario:EU, quando:new Date().toISOString()});
-    await bkRegistrar({acao:'checagem', tipo:CK_ATUAL.tipo, mes:CK_ATUAL.mes, chave:CK_ATUAL.chave, ref:CK_ATUAL.desc,
-      de: ant ? ant.status : 'pendente', para: status, obs});
-    msg.textContent = ''; dlgCk.close(); colabRender();
-  }catch(err){
-    msg.textContent = COLAB.modo==='pasta' ? 'Não foi possível gravar na pasta. Confira se ela está sincronizada e se você pode editá-la.'
-      : err && err.code==='invalid_argument' ? 'Seu acesso ao painel é só de leitura. Peça ao administrador acesso de Colaborador.'
-      : 'Não foi possível salvar agora. Tente de novo.';
-  }finally{ btn.disabled = false; }
-});
-document.addEventListener('click',e=>{
-  const b = e.target.closest('.ck-btn[data-ck]'); if(!b) return;
-  e.stopPropagation(); abrirChecagem(b);
-}, true);
-
-/* ---------------- aba Registro ---------------- */
-const REG_ACAO = {checagem:'Checagem', usuario:'Usuários'};
-const REG_TIPO = {pi:'Pagamento indevido', cf:'Confronto', usuario:'Cadastro'};
-const regUsuario = r => nomeUsuario(r.usuario) || (r.tipo==='usuario' ? 'administrador' : '');
-function regFiltrado(){
-  const q = document.getElementById('reg-q').value.trim().toLowerCase();
-  return COLAB.log.filter(r=> !q || [regUsuario(r), r.ref, r.obs, r.mes, CK_LAB[r.para]].join(' ').toLowerCase().includes(q));
-}
-function renderRegistro(){
-  const box = document.getElementById('registro'), note = document.getElementById('reg-note');
-  document.getElementById('reg-btn').disabled = !COLAB.modo;
-  if(!COLAB.modo){
-    note.textContent='';
-    box.innerHTML = `<div class="pad" style="color:var(--muted);font-size:12.5px">${COLAB.suportePasta
-      ? 'Para registrar checagens, clique em <b>Conectar pasta do Teams</b> no topo e escolha a pasta da equipe (sincronizada pelo OneDrive). O navegador pede autorização para o painel gravar nela.'
-      : 'Checagens e registro funcionam no painel publicado ou neste arquivo aberto no Edge ou no Chrome do computador, conectado à pasta do Teams.'}</div>`;
-    return;
-  }
-  const rs = regFiltrado();
-  note.textContent = `${COLAB.log.length} registro(s) · mais recentes primeiro` + (COLAB.modo==='pasta' ? ` · pasta ${COLAB.pasta.name}/painel-dados` : '');
-  box.innerHTML = rs.length ? `<div style="overflow-x:auto"><table class="reg-t">
-      <thead><tr><th>Quando</th><th>Usuário</th><th>Tipo</th><th>Mês</th><th>Item</th><th>De → para</th><th>Observações</th></tr></thead>
-      <tbody>${rs.map(r=>`<tr><td class="num">${esc(quando(r.quando))}</td><td>${esc(regUsuario(r)||'—')}</td>
-        <td>${esc(REG_TIPO[r.tipo]||REG_ACAO[r.acao]||r.acao||'')}</td><td>${r.mes?esc(mshort(r.mes)):''}</td><td class="w">${esc(r.ref||'')}</td>
-        <td>${esc(CK_LAB[r.de]||r.de||'—')} → ${esc(CK_LAB[r.para]||r.para||'—')}</td><td class="w">${esc(r.obs||'')}</td></tr>`).join('')}</tbody>
-    </table></div>` : '<div class="pad" style="color:var(--muted);font-size:12.5px">Nenhuma alteração registrada.</div>';
-}
-document.getElementById('reg-q').addEventListener('input',renderRegistro);
-document.getElementById('reg-btn').addEventListener('click', async ()=>{
-  const msg = document.getElementById('reg-msg'), hoje = new Date().toISOString().slice(0,10);
-  const rows = [['Quando','Usuário','Tipo','Mês','Item','De','Para','Observações']].concat(
-    COLAB.log.map(r=>[quando(r.quando), regUsuario(r), REG_TIPO[r.tipo]||REG_ACAO[r.acao]||'', r.mes?mshort(r.mes):'', r.ref||'',
-      CK_LAB[r.de]||r.de||'', CK_LAB[r.para]||r.para||'', r.obs||'']));
-  try{
-    const nome = `Registro_Painel_Motoristas_${hoje}.xlsx`;
-    const st = await salvarArquivo(nome, XLSX_MIN.build([{name:'Registro', rows, header:0, widths:[16,26,18,8,60,24,24,60]}]));
-    msg.textContent = st==='delivered' ? 'Registro enviado.' : `Registro gerado: ${nome}`;
-  }catch(e){ msg.textContent = e && e.code==='declined' ? 'Download cancelado.' : 'Não foi possível gerar o arquivo.'; }
-});
-
-/* ---------------- início: escolhe o modo ---------------- */
-function renderCkAll(){ renderIndevido(); renderConfrontos(); }
-(async function colabInit(){
-  let db = null, room = null, user = null;
-  if(window.claude && typeof window.claude.use==='function')
-    [db, room, user] = await Promise.all(['db','room','user'].map(n=>window.claude.use(n).catch(()=>null)));
-  if(db){
-    COLAB.modo = 'db'; COLAB.db = db; COLAB.room = room; COLAB.user = user;
-    if(user) COLAB.adminPlataforma = await user.canEdit();
-    db.doc('config/usuarios').onSnapshot(s=>{ COLAB.usuarios = (s.exists && Array.isArray(s.data().lista)) ? s.data().lista : []; colabRender(); }, ()=>{});
-    db.collection('checagens').onSnapshot(s=>{ COLAB.checks = Object.fromEntries(s.docs.map(d=>[d.id, d.data()])); renderCkAll(); }, ()=>{});
-    db.collection('registro').orderBy('quando','desc').limit(1000).onSnapshot(s=>{ COLAB.log = s.docs.map(d=>d.data()); renderRegistro(); }, ()=>{});
-    if(room){
-      room.onPeers(ch=>{ COLAB.peers = ch.peers; renderOnline(); }, ()=>{});
-      if(EU) room.presence({usuario:EU}).catch(()=>{});
-    }
-    colabRender(); return;
-  }
-  COLAB.suportePasta = typeof window.showDirectoryPicker === 'function';
-  if(COLAB.suportePasta){
-    try{
-      const h = await IDB.get('pasta');
-      if(h){ (await h.queryPermission({mode:'readwrite'}))==='granted' ? await pastaIniciar(h) : (COLAB.pastaPendente = h); }
-    }catch(e){}
-  }
-  colabRender();
-})();
+__ACESSO_JS__
 
 /* ================= ABAS ================= */
 const TABS = {'tab-geral':'v-geral','tab-ind':'v-ind','tab-evo':'v-evo','tab-pi':'v-pi','tab-conf':'v-conf','tab-reg':'v-reg'};
+const FAIXA = {
+  'tab-geral':['Visão geral','Frete, bonificações e verificações das movimentações da frota no mês.'],
+  'tab-ind':['Por motorista','Ficha de cada motorista: números do mês, comparação com a frota, histórico e movimentações.'],
+  'tab-evo':['Evolução','A frota e cada motorista mês a mês, só com os meses fechados.'],
+  'tab-pi':['Pagamento indevido','Viagem paga em rota de carregamento e ordem cancelada paga: o que recuperar e a checagem de cada lançamento.'],
+  'tab-conf':['Confrontos','CT-e com frete em mais de um lançamento, lado a lado, com a checagem de cada caso.'],
+  'tab-reg':['Registro','Todas as checagens salvas, com usuário, data e hora.']};
+let TAB_ATUAL = 'tab-geral';
 function setTab(id){
+  TAB_ATUAL = id;
+  document.getElementById('fx-tit').textContent = FAIXA[id][0];
+  document.getElementById('fx-sub').textContent = FAIXA[id][1];
   Object.entries(TABS).forEach(([t,v])=>{
     document.getElementById(t).setAttribute('aria-selected', t===id);
     document.getElementById(v).classList.toggle('hidden', t!==id);
@@ -1351,7 +1042,7 @@ document.getElementById('rank').addEventListener('click',e=>{
 });
 
 /* cabeçalho congelado: sombra só depois de rolar */
-const topHdr = document.querySelector('header.top');
+const topHdr = document.getElementById('stickytop');
 const marcaTopo = ()=>{
   const y = window.scrollY;
   topHdr.classList.toggle('stuck', y > 4);
@@ -1399,16 +1090,17 @@ function renderMes(keepCod){
   T    = TOTAIS[MES];
   ATIVOS = DATA.filter(d=>isAvaliado(d) && !isManobrista(d));
   calcRanks();
-  document.getElementById('per-lab').innerHTML = `${mlab(MES)} · <strong>${DATA.length} motoristas</strong>`
-    + (ATE[MES] ? ` · <span class="ate">dados até <strong>${ATE[MES]}</strong></span>` : '');
+  document.getElementById('per-lab').innerHTML = `<strong>${DATA.length} motoristas</strong>`
+    + (ATE[MES] ? ` · dados até <strong>${ATE[MES]}</strong>` : '');
+  document.getElementById('fx-mes').textContent = `Mês em uso · ${mlab(MES)}` + (ATE[MES] ? ` · até ${ATE[MES]}` : '');
   const pv = PREVIA[MES], ban = document.getElementById('previa-ban');
   ban.hidden = !pv;
-  if(pv) ban.innerHTML = `<b>${esc(mlab(MES))} — dados até ${esc(ATE[MES]||'—')}</b>`
+  if(pv) ban.innerHTML = `<span><b>${esc(mlab(MES))} — dados até ${esc(ATE[MES]||'—')}</b>`
     + (pv.periodo && pv.periodo.length ? ` (período ${esc(pv.periodo[0])} a ${esc(pv.periodo[1])}` : ' (')
     + (pv.ultimoLancamento ? `, último lançamento em ${esc(pv.ultimoLancamento)}` : '') + `). `
     + `Relatório emitido em ${esc(pv.emissao||'—')}, antes do fechamento de média: `
     + `só bônus de viagem (sem prêmio por economia, bônus por média, km e posição no grupo). `
-    + `Verificações, pagamento indevido e confrontos valem normalmente; o mês fica fora da Evolução e do histórico até o fechamento.`;
+    + `Verificações, pagamento indevido e confrontos valem normalmente; o mês fica fora da Evolução e do histórico até o fechamento.</span>`;
   renderKPIs(); renderComposicao(); renderGrupos(); renderFora(); renderIndevido(); renderIndevidoCallout(); renderVerif(); renderRelControles(); renderRank(); renderTable(); renderConfrontos();
   renderIndividual(keepCod);
 }

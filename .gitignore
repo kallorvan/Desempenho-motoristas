@@ -1,7 +1,8 @@
 entrada/*.pdf
 entrada/*.xlsx
 entrada/*.xls
-saida/
+saida/*
+!saida/Dashboard_Produtividade_Motoristas.html
 *.txt
 __pycache__/
 CLAUDE.local.md

@@ -60,6 +60,11 @@ REGRAS = [
          descricao='Mesmo motorista, mesmo documento e mesmo CT-e já constavam nas movimentações do mês anterior '
                    '(ex.: viagens do dia 30/09 no fechamento de out/2026, cujo período começa em 30/09). '
                    'Possível frete e bônus contados e pagos nos dois meses.'),
+    dict(id='CTE_MES_ANTERIOR', curto='CT-e do mês anterior', nivel='alerta',
+         titulo='CT-e com frete já lançado no mês anterior',
+         descricao='O CT-e tem frete neste mês e já teve frete no mês anterior, em outro motorista ou outro '
+                   'documento, sem ser a divisão 60% / 40%. Possível frete e bônus contados nos dois meses '
+                   '(ex.: nov/2026, Varginha x Santos com o mesmo container e frete inteiro em out e nov).'),
     dict(id='RV_FERIAS', curto='RV férias', nivel='alerta', titulo='Viagem com Nº RV "FERIAS"',
          descricao='Lançamento com o Nº RV marcado como FERIAS: motorista em férias com viagem lançada.'),
     dict(id='TAXA_VIAGEM', curto='Taxa atípica', nivel='alerta', titulo='Bônus de viagem fora das taxas usuais',
@@ -177,14 +182,44 @@ def divisao(itens):
     return None
 
 
+def mes_anterior(mes):
+    aaaa, mm = map(int, mes.split('-'))
+    return f'{aaaa - (mm == 1)}-{12 if mm == 1 else mm - 1:02d}'
+
+
+def cte_anterior(mes, movs):
+    """CT-e -> [(cod, índice, lançamento)] do mês anterior com frete, só dos CT-e que têm frete
+    neste mês, sem os lançamentos que são o mesmo motorista + documento (REPETIDO_MES_ANTERIOR)."""
+    carga = carregar(mes_anterior(mes))
+    if carga is None:
+        return {}
+    atual = indice_cte(movs)
+    out = {}
+    for cte, v in indice_cte(carga[1]).items():
+        if cte not in atual:
+            continue
+        meus = {(c, x['doc']) for c, _, x in atual[cte]}
+        resto = [t for t in v if (t[0], t[2]['doc']) not in meus]
+        if resto:
+            out[cte] = resto
+    return out
+
+
 def grupos_duplicados(mes):
-    """[{cte, itens: [[cod, índice], ...]}] dos CT-e com frete em mais de um lançamento."""
+    """[{cte, itens: [[cod, índice] ou [cod, índice, mês anterior], ...]}] dos CT-e com frete em mais
+    de um lançamento — no mês ou somando o mês anterior (CTE_MES_ANTERIOR)."""
     carga = carregar(mes)
     if carga is None:
         return []
     _, movs = carga
-    return [{'cte': cte, 'itens': [[c, i] for c, i, _ in v], 'divisao': divisao([(c, x) for c, _, x in v])}
-            for cte, v in indice_cte(movs).items() if len(v) > 1]
+    ant, mant = cte_anterior(mes, movs), mes_anterior(mes)
+    gs = []
+    for cte, v in indice_cte(movs).items():
+        p = ant.get(cte, [])
+        if len(v) + len(p) > 1:
+            gs.append({'cte': cte, 'itens': [[c, i, mant] for c, i, _ in p] + [[c, i] for c, i, _ in v],
+                       'divisao': divisao([(c, x) for c, _, x in p + v]), 'anterior': bool(p)})
+    return gs
 
 
 def verificar(mes):
@@ -203,8 +238,8 @@ def verificar(mes):
     conf = conferencia_rubricas(d, movs)
 
     # movimentações do mês anterior, para achar lançamentos repetidos entre fechamentos
-    aaaa, mm = map(int, mes.split('-'))
-    ant = f'{aaaa - (mm == 1)}-{12 if mm == 1 else mm - 1:02d}'
+    ant = mes_anterior(mes)
+    cte_ant = cte_anterior(mes, movs)
     carga_ant = carregar(ant)
     no_ant = {}
     if carga_ant:
@@ -248,6 +283,21 @@ def verificar(mes):
                 marca(cod, i, 'REPETIDO_MES_ANTERIOR',
                       f'doc. {x["doc"]} · CT-e {x["cte"]} ({x["data"]}) já no fechamento de {ant[5:]}/{ant[:4]} '
                       f'(lá: viagem R$ {brl(y["viagem"])}, VG {y["vg"]}; aqui: viagem R$ {brl(x["viagem"])}, VG {x["vg"]})')
+            p = cte_ant.get(x['cte'], []) if x['frete'] > 0 else []
+            if p:
+                div2 = divisao([(c, o) for c, _, o in p] + [(cod, x)]) if len(p) == 1 and len(por_cte[x['cte']]) == 1 else None
+                c2, _, o = p[0]
+                if div2:
+                    marca(cod, i, 'VIAGEM_DIVIDIDA',
+                          f'CT-e {x["cte"]}: {div2[1]}% do frete (R$ {brl(x["frete"])}, bônus R$ {brl(x["viagem"])}) · '
+                          f'{div2[0]}% com {c2} doc. {o["doc"]} no mês anterior ({o["data"]}, frete R$ {brl(o["frete"])}, '
+                          f'RV {o["rv"]}) · frete do CT-e R$ {brl(x["frete"] + o["frete"])}')
+                else:
+                    marca(cod, i, 'CTE_MES_ANTERIOR', f'CT-e {x["cte"]} (frete R$ {brl(x["frete"])}, bônus R$ {brl(x["viagem"])}) '
+                          f'já com frete em {ant[5:]}/{ant[:4]}: ' + '; '.join(
+                              f'{c} doc. {y["doc"]} {y["data"]} {y["od"]} (frete R$ {brl(y["frete"])}, bônus R$ {brl(y["viagem"])}'
+                              f'{", mesmo container" if y["container"] and y["container"] == x["container"] else ""})'
+                              for c, _, y in p))
             if x['rv'] == 'FERIAS':
                 marca(cod, i, 'RV_FERIAS', f'Nº RV "FERIAS" com frete R$ {brl(x["frete"])} e bônus R$ {brl(x["viagem"])}')
             if x['frete'] > 0 and x['viagem'] > 0:
